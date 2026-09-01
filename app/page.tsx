@@ -1,6 +1,6 @@
 'use client';
 
-import { useCompletion } from 'ai/react';
+import { useCompletion } from '@ai-sdk/react';
 
 export default function Home() {
   const { completion, input, handleInputChange, handleSubmit, isLoading } = useCompletion({
@@ -46,4 +46,3 @@ export default function Home() {
     </main>
   );
 }
-// force vercel rebuild
