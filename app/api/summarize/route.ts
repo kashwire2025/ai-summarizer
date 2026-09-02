@@ -1,11 +1,15 @@
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText } from 'ai';
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+});
 
 export async function POST(req: Request) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
-      return new Response('GEMINI_API_KEY is missing in Vercel Environment Variables.', { status: 500 });
+      return new Response('API key is missing in Vercel Environment Variables.', { status: 500 });
     }
 
     const { prompt, length = 'bullets', image, language = 'en' } = await req.json();
@@ -30,7 +34,7 @@ export async function POST(req: Request) {
     }
 
     const result = streamText({
-      model: google('gemini-1.5-flash', { apiKey }),
+      model: google('gemini-1.5-flash'),
       system: `You are an expert document summarizer and translator. Analyze the provided text or image, and output the summary entirely in the requested target language code (${language}). Format requirement: ${lengthInstruction}`,
       messages: [
         {
