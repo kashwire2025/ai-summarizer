@@ -3,11 +3,9 @@
 import { useState, useRef } from 'react';
 
 const themes = {
-  dark: { name: 'Dark Slate', bg: 'bg-slate-950', card: 'bg-slate-900', border: 'border-slate-800', text: 'text-white' },
-  navy: { name: 'Deep Navy', bg: 'bg-blue-950', card: 'bg-blue-900/40', border: 'border-blue-800/60', text: 'text-blue-50' },
-  emerald: { name: 'Emerald', bg: 'bg-emerald-950', card: 'bg-emerald-900/40', border: 'border-emerald-800/60', text: 'text-emerald-50' },
-  purple: { name: 'Midnight Purple', bg: 'bg-purple-950', card: 'bg-purple-900/40', border: 'border-purple-800/60', text: 'text-purple-50' },
-  oled: { name: 'OLED Black', bg: 'bg-black', card: 'bg-zinc-900', border: 'border-zinc-800', text: 'text-zinc-100' },
+  black: { name: 'Black', bg: 'bg-black', card: 'bg-zinc-900', border: 'border-zinc-800', text: 'text-zinc-100' },
+  white: { name: 'White', bg: 'bg-slate-100', card: 'bg-white', border: 'border-slate-200', text: 'text-slate-900' },
+  blue: { name: 'Blue', bg: 'bg-blue-950', card: 'bg-blue-900/40', border: 'border-blue-800/60', text: 'text-blue-50' },
 };
 
 const languages = [
@@ -29,7 +27,7 @@ export default function Home() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [activeTheme, setActiveTheme] = useState<keyof typeof themes>('dark');
+  const [activeTheme, setActiveTheme] = useState<keyof typeof themes>('black');
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -113,7 +111,7 @@ export default function Home() {
           <h1 className="text-2xl font-bold">AI Document Summarizer</h1>
           <p className="opacity-70 text-sm">Generate instant summaries from text or camera snaps</p>
           
-          {/* Theme Palette Switcher */}
+          {/* Theme Switcher: Black, White, Blue */}
           <div className="flex items-center justify-center gap-2 mt-2">
             <span className="text-xs opacity-60">Theme:</span>
             {Object.keys(themes).map((tKey) => (
@@ -121,12 +119,10 @@ export default function Home() {
                 key={tKey}
                 onClick={() => setActiveTheme(tKey as keyof typeof themes)}
                 className={`w-6 h-6 rounded-full border-2 transition ${
-                  activeTheme === tKey ? 'border-blue-400 scale-110' : 'border-transparent opacity-70'
+                  activeTheme === tKey ? 'border-blue-500 scale-110' : 'border-gray-400 opacity-70'
                 } ${
-                  tKey === 'dark' ? 'bg-slate-900' :
-                  tKey === 'navy' ? 'bg-blue-900' :
-                  tKey === 'emerald' ? 'bg-emerald-900' :
-                  tKey === 'purple' ? 'bg-purple-900' : 'bg-black'
+                  tKey === 'black' ? 'bg-black' :
+                  tKey === 'white' ? 'bg-white' : 'bg-blue-600'
                 }`}
                 title={themes[tKey as keyof typeof themes].name}
               />
@@ -185,14 +181,14 @@ export default function Home() {
 
           <button
             onClick={() => cameraInputRef.current?.click()}
-            className={`${theme.card} border ${theme.border} hover:brightness-125 rounded-lg p-3 text-xs font-semibold flex items-center justify-center gap-2 transition`}
+            className={`${theme.card} border ${theme.border} hover:opacity-80 rounded-lg p-3 text-xs font-semibold flex items-center justify-center gap-2 transition`}
           >
             📷 Snap Photo
           </button>
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className={`${theme.card} border ${theme.border} hover:brightness-125 rounded-lg p-3 text-xs font-semibold flex items-center justify-center gap-2 transition`}
+            className={`${theme.card} border ${theme.border} hover:opacity-80 rounded-lg p-3 text-xs font-semibold flex items-center justify-center gap-2 transition`}
           >
             📁 Upload Document
           </button>
@@ -220,7 +216,7 @@ export default function Home() {
             rows={5}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Paste text here, or snap/upload a document above..."
+            placeholder="Paste text here, or type text description when scanning a document..."
             className={`w-full ${theme.card} border ${theme.border} rounded-lg p-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500`}
           />
 
@@ -247,7 +243,7 @@ export default function Home() {
               <h2 className="text-sm font-bold opacity-80">Summary Result</h2>
               <button
                 onClick={handleShare}
-                className={`${theme.bg} hover:brightness-125 text-xs px-3 py-1.5 rounded-md border ${theme.border} transition`}
+                className={`${theme.bg} hover:opacity-80 text-xs px-3 py-1.5 rounded-md border ${theme.border} transition`}
               >
                 📲 Share to WhatsApp / Socials
               </button>
