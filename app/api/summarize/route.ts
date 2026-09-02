@@ -29,7 +29,12 @@ export async function POST(req: Request) {
     contentParts.push({ type: 'text', text: userPrompt });
 
     if (image) {
-      contentParts.push({ type: 'image', image: image });
+      // Clean up base64 prefix if present
+      const base64Data = image.includes('base64,') ? image.split('base64,')[1] : image;
+      contentParts.push({ 
+        type: 'image', 
+        image: base64Data 
+      });
     }
 
     const google = createGoogleGenerativeAI({ apiKey });
@@ -45,7 +50,7 @@ export async function POST(req: Request) {
       ],
     });
 
-    return result.toTextStreamResponse();
+    return result.toDataStreamResponse();
   } catch (err: any) {
     console.error('Summarize API Error:', err);
     return new Response(`AI Generation Error: ${err?.message || JSON.stringify(err)}`, { status: 500 });
