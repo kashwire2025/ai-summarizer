@@ -1,191 +1,127 @@
 'use client';
 
-import { useCompletion } from '@ai-sdk/react';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 
 export default function Home() {
-  const [summaryType, setSummaryType] = useState('bullets');
-  const [copied, setCopied] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [prompt, setPrompt] = useState('');
+  const [length, setLength] = useState('bullets');
+  const [summary, setSummary] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const { completion, input, setInput, handleInputChange, handleSubmit, isLoading } = useCompletion({
-    api: '/api/summarize',
-    body: { length: summaryType, image: imagePreview },
-    onError: (error) => {
-      setErrorMessage(error.message || 'Failed to summarize. Check GROQ_API_KEY setting.');
-    },
-    onFinish: () => {
-      setErrorMessage(null);
-    },
-  });
+  const handleSummarize = async () => {
+    if (!prompt.trim()) return;
+    setLoading(true);
+    setSummary('');
+    setError('');
 
-  const copyToClipboard = () => {
-    if (completion) {
-      navigator.clipboard.writeText(completion);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+    try {
+      const response = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, length }),
+      });
 
-  const handleNativeShare = async () => {
-    if (!completion) return;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'AI Summary', text: completion });
-      } catch (err) {
-        console.log('Share canceled');
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
       }
-    } else {
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(completion)}`, '_blank');
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('Failed to open stream reader.');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        setSummary((prev) => prev + chunk);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to generate summary.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setImagePreview(event.target.result as string);
-          setErrorMessage(null);
-        }
-      };
-      reader.readAsDataURL(file);
-    } else if (file.type.startsWith('text/') || file.name.endsWith('.txt')) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setInput(event.target.result as string);
-          setImagePreview(null);
-        }
-      };
-      reader.readAsText(file);
+  const handleShare = () => {
+    if (navigator.share && summary) {
+      navigator.share({
+        title: 'Document Summary',
+        text: summary,
+      }).catch(() => {});
+    } else if (summary) {
+      navigator.clipboard.writeText(summary);
+      alert('Summary copied to clipboard!');
     }
-    
-    // Reset file input value to prevent camera re-triggering loops
-    e.target.value = '';
-  };
-
-  const clearImage = () => {
-    setImagePreview(null);
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 max-w-4xl mx-auto">
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-white sm:text-4xl">AI Document Summarizer</h1>
-        <p className="text-slate-400 mt-2">Generate instant summaries from text or camera document snaps.</p>
+    <main className="min-h-screen bg-slate-950 text-white p-4 max-w-2xl mx-auto flex flex-col gap-6">
+      <header className="text-center py-4">
+        <h1 className="text-2xl font-bold">AI Document Summarizer</h1>
+        <p className="text-slate-400 text-sm">Generate instant summaries from text or camera snaps</p>
       </header>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Summary Format</label>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: 'bullets', label: 'Bullet Points' },
-              { id: 'brief', label: 'Executive Brief' },
-              { id: 'detailed', label: 'Detailed Analysis' },
-            ].map((type) => (
-              <button
-                key={type.id}
-                type="button"
-                onClick={() => setSummaryType(type.id)}
-                className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
-                  summaryType === type.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
-                }`}
-              >
-                {type.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <input
-            type="file"
-            accept="image/*,.txt"
-            capture="environment"
-            ref={fileInputRef}
-            onChange={handleCameraCapture}
-            className="hidden"
-          />
+      {/* Format Selection */}
+      <div className="flex gap-2 bg-slate-900 p-1 rounded-lg border border-slate-800">
+        {['bullets', 'brief', 'detailed'].map((type) => (
           <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full py-2.5 px-4 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 font-medium hover:bg-slate-800 flex items-center justify-center gap-2 transition"
+            key={type}
+            onClick={() => setLength(type)}
+            className={`flex-1 py-2 text-xs font-semibold rounded-md capitalize transition ${
+              length === type ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+            }`}
           >
-            📷 Snap Photo / Scan Document
+            {type === 'bullets' ? 'Bullet Points' : type === 'brief' ? 'Executive Brief' : 'Detailed Analysis'}
           </button>
-        </div>
+        ))}
+      </div>
 
-        {imagePreview && (
-          <div className="relative rounded-lg border border-slate-800 bg-slate-900 p-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img src={imagePreview} alt="Captured preview" className="w-12 h-12 object-cover rounded-md" />
-              <span className="text-xs text-green-400 font-medium">Photo attached! Tap 'Summarize' to read.</span>
-            </div>
-            <button
-              type="button"
-              onClick={clearImage}
-              className="text-xs text-slate-400 hover:text-red-400 px-2 py-1"
-            >
-              Remove
-            </button>
-          </div>
-        )}
-
+      {/* Input Area */}
+      <div className="flex flex-col gap-3">
         <textarea
-          value={input}
-          onChange={handleInputChange}
-          placeholder={imagePreview ? "Photo attached above. Tap 'Summarize Text' below." : "Paste long text here, or snap a photo above..."}
-          rows={7}
-          className="w-full rounded-lg border border-slate-800 bg-slate-900 p-4 text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+          rows={6}
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Paste or type text here..."
+          className="w-full bg-slate-900 border border-slate-800 rounded-lg p-3 text-sm focus:outline-none focus:border-blue-500"
         />
 
-        {errorMessage && (
-          <div className="p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-lg text-sm">
-            {errorMessage}
-          </div>
-        )}
-
         <button
-          type="submit"
-          disabled={isLoading || (!input.trim() && !imagePreview)}
-          className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition"
+          onClick={handleSummarize}
+          disabled={loading || !prompt.trim()}
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-3 rounded-lg text-sm transition"
         >
-          {isLoading ? 'Reading & Summarizing...' : 'Summarize Text'}
+          {loading ? 'Summarizing...' : 'Summarize Text'}
         </button>
-      </form>
+      </div>
 
-      {completion && (
-        <section className="mt-8 rounded-lg border border-slate-800 bg-slate-900/50 p-6 relative space-y-4">
-          <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-            <h2 className="text-lg font-semibold text-white">Summary Result</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={copyToClipboard}
-                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-md border border-slate-700 transition"
-              >
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
-              <button
-                onClick={handleNativeShare}
-                className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-md font-medium transition"
-              >
-                📲 Share to WhatsApp / Socials
-              </button>
-            </div>
+      {/* Error Message */}
+      {error && (
+        <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-xs">
+          {error}
+        </div>
+      )}
+
+      {/* Summary Output */}
+      {summary && (
+        <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex flex-col gap-4">
+          <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+            <h2 className="text-sm font-bold text-slate-300">Summary Result</h2>
+            <button
+              onClick={handleShare}
+              className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded-md border border-slate-700 transition"
+            >
+              📲 Share to WhatsApp / Socials
+            </button>
           </div>
-          <div className="whitespace-pre-wrap text-slate-300 text-sm leading-relaxed">
-            {completion}
+          <div className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">
+            {summary}
           </div>
-        </section>
+        </div>
       )}
     </main>
   );
