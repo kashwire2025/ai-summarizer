@@ -2,6 +2,10 @@ import { groq } from '@ai-sdk/groq';
 import { streamText } from 'ai';
 
 export async function POST(req: Request) {
+  if (!process.env.GROQ_API_KEY) {
+    return new Response('GROQ_API_KEY is missing in Vercel Environment Variables.', { status: 500 });
+  }
+
   try {
     const { prompt, length = 'bullets', image } = await req.json();
 
@@ -29,26 +33,21 @@ export async function POST(req: Request) {
           },
         ],
       });
-
-      return typeof result.toDataStreamResponse === 'function'
-        ? result.toDataStreamResponse()
-        : result.toTextStreamResponse();
+      return result.toTextStreamResponse();
     }
 
     if (!prompt || !prompt.trim()) {
       return new Response('Text prompt or camera image is required.', { status: 400 });
     }
 
-    // Process pasted text via Llama 3.3
+    // Process pasted text via Llama 3.1 Instant
     const result = streamText({
-      model: groq('llama-3.3-70b-versatile'),
+      model: groq('llama-3.1-8b-instant'),
       system: systemPrompt,
       prompt,
     });
 
-    return typeof result.toDataStreamResponse === 'function'
-      ? result.toDataStreamResponse()
-      : result.toTextStreamResponse();
+    return result.toTextStreamResponse();
   } catch (err: any) {
     console.error('API Error:', err);
     return new Response(err?.message || 'Server processing failed', { status: 500 });
