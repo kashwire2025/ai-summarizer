@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     }
 
     const result = streamText({
-      model: google('gemini-1.5-flash'),
+      model: google('gemini-1.5-flash', { apiKey }),
       system: `You are an expert document summarizer and translator. Analyze the provided text or image, and output the summary entirely in the requested target language code (${language}). Format requirement: ${lengthInstruction}`,
       messages: [
         {
