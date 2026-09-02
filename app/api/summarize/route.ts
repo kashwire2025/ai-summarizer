@@ -29,7 +29,10 @@ export async function POST(req: Request) {
           },
         ],
       });
-      return result.toDataStreamResponse();
+
+      return typeof result.toDataStreamResponse === 'function'
+        ? result.toDataStreamResponse()
+        : result.toTextStreamResponse();
     }
 
     if (!prompt || !prompt.trim()) {
@@ -43,7 +46,9 @@ export async function POST(req: Request) {
       prompt,
     });
 
-    return result.toDataStreamResponse();
+    return typeof result.toDataStreamResponse === 'function'
+      ? result.toDataStreamResponse()
+      : result.toTextStreamResponse();
   } catch (err: any) {
     console.error('API Error:', err);
     return new Response(err?.message || 'Server processing failed', { status: 500 });
