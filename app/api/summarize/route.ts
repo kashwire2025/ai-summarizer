@@ -9,42 +9,23 @@ export async function POST(req: Request) {
   try {
     const { prompt, length = 'bullets', image } = await req.json();
 
-    let systemPrompt = 'You are an expert document reader and summarizer.';
-    if (length === 'bullets') {
-      systemPrompt = 'Summarize into clean, scannable bullet points highlighting key insights.';
-    } else if (length === 'brief') {
-      systemPrompt = 'Provide a concise 2-to-3 sentence executive brief.';
+    let lengthInstruction = 'Summarize into clean, scannable bullet points highlighting key insights.';
+    if (length === 'brief') {
+      lengthInstruction = 'Provide a concise 2-to-3 sentence executive brief.';
     } else if (length === 'detailed') {
-      systemPrompt = 'Provide an executive summary followed by a comprehensive section breakdown.';
+      lengthInstruction = 'Provide an executive summary followed by a comprehensive section breakdown.';
     }
 
     const activeModel = 'openai/gpt-oss-20b';
 
-    if (image) {
-      const result = streamText({
-        model: groq(activeModel),
-        system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Extract all readable text from this document image and summarize it.' },
-              { type: 'image', image: image },
-            ],
-          },
-        ],
-      });
-      return result.toTextStreamResponse();
-    }
-
-    if (!prompt || !prompt.trim()) {
-      return new Response('Text prompt or camera image is required.', { status: 400 });
-    }
+    const userContent = image 
+      ? `Extract all text from this document image and summarize it immediately. Instruction: ${lengthInstruction}\n\n[IMAGE DATA: ${image}]`
+      : `Instruction: ${lengthInstruction}\n\nDocument Content:\n${prompt}`;
 
     const result = streamText({
       model: groq(activeModel),
-      system: systemPrompt,
-      prompt,
+      system: 'You are a direct text summarizer. Do not ask for more input. Do not say "I am ready". Output ONLY the summary immediately.',
+      prompt: userContent,
     });
 
     return result.toTextStreamResponse();
