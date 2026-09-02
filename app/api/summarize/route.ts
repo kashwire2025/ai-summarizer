@@ -18,9 +18,11 @@ export async function POST(req: Request) {
       systemPrompt = 'Provide an executive summary followed by a comprehensive section breakdown.';
     }
 
+    const activeModel = 'openai/gpt-oss-20b';
+
     if (image) {
       const result = streamText({
-        model: groq('llama-3.2-11b-vision-preview'),
+        model: groq(activeModel),
         system: systemPrompt,
         messages: [
           {
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
     }
 
     const result = streamText({
-      model: groq('llama3-8b-8192'),
+      model: groq(activeModel),
       system: systemPrompt,
       prompt,
     });
