@@ -6,11 +6,19 @@ import { useState, useRef } from 'react';
 export default function Home() {
   const [summaryType, setSummaryType] = useState('bullets');
   const [copied, setCopied] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { completion, input, setInput, handleInputChange, handleSubmit, isLoading } = useCompletion({
     api: '/api/summarize',
-    body: { length: summaryType },
+    body: { length: summaryType, image: imagePreview },
+    onError: (error) => {
+      setErrorMessage(error.message || 'Failed to summarize. Check GROQ_API_KEY setting.');
+    },
+    onFinish: () => {
+      setErrorMessage(null);
+    },
   });
 
   const copyToClipboard = () => {
@@ -23,19 +31,14 @@ export default function Home() {
 
   const handleNativeShare = async () => {
     if (!completion) return;
-    
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: 'AI Document Summary',
-          text: completion,
-        });
+        await navigator.share({ title: 'AI Summary', text: completion });
       } catch (err) {
-        console.log('Share dismissed');
+        console.log('Share canceled');
       }
     } else {
-      const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(completion)}`;
-      window.open(waUrl, '_blank');
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(completion)}`, '_blank');
     }
   };
 
@@ -43,24 +46,39 @@ export default function Home() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type.startsWith('text/') || file.name.endsWith('.txt')) {
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setImagePreview(event.target.result as string);
+          setErrorMessage(null);
+        }
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type.startsWith('text/') || file.name.endsWith('.txt')) {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
           setInput(event.target.result as string);
+          setImagePreview(null);
         }
       };
       reader.readAsText(file);
-    } else {
-      alert("Photo attached! Optical document reading enabled.");
     }
+    
+    // Reset file input value to prevent camera re-triggering loops
+    e.target.value = '';
+  };
+
+  const clearImage = () => {
+    setImagePreview(null);
   };
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 max-w-4xl mx-auto">
       <header className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-white sm:text-4xl">AI Document Summarizer</h1>
-        <p className="text-slate-400 mt-2">Generate tailored summaries from text or physical documents.</p>
+        <p className="text-slate-400 mt-2">Generate instant summaries from text or camera document snaps.</p>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -102,24 +120,46 @@ export default function Home() {
             onClick={() => fileInputRef.current?.click()}
             className="w-full py-2.5 px-4 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 font-medium hover:bg-slate-800 flex items-center justify-center gap-2 transition"
           >
-            📷 Scan Document / Snap Photo
+            📷 Snap Photo / Scan Document
           </button>
         </div>
+
+        {imagePreview && (
+          <div className="relative rounded-lg border border-slate-800 bg-slate-900 p-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img src={imagePreview} alt="Captured preview" className="w-12 h-12 object-cover rounded-md" />
+              <span className="text-xs text-green-400 font-medium">Photo attached! Tap 'Summarize' to read.</span>
+            </div>
+            <button
+              type="button"
+              onClick={clearImage}
+              className="text-xs text-slate-400 hover:text-red-400 px-2 py-1"
+            >
+              Remove
+            </button>
+          </div>
+        )}
 
         <textarea
           value={input}
           onChange={handleInputChange}
-          placeholder="Paste text here or tap 'Scan Document' above to capture paper with your camera..."
+          placeholder={imagePreview ? "Photo attached above. Tap 'Summarize Text' below." : "Paste long text here, or snap a photo above..."}
           rows={7}
           className="w-full rounded-lg border border-slate-800 bg-slate-900 p-4 text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
         />
 
+        {errorMessage && (
+          <div className="p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-lg text-sm">
+            {errorMessage}
+          </div>
+        )}
+
         <button
           type="submit"
-          disabled={isLoading || !input.trim()}
+          disabled={isLoading || (!input.trim() && !imagePreview)}
           className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition"
         >
-          {isLoading ? 'Processing Summary...' : 'Summarize Text'}
+          {isLoading ? 'Reading & Summarizing...' : 'Summarize Text'}
         </button>
       </form>
 
