@@ -15,7 +15,6 @@ export async function POST(req: Request) {
 
     const contentParts: any[] = [];
     
-    // Ensure we provide a valid prompt even if only an image is uploaded
     if (prompt.trim() !== '') {
       contentParts.push({ type: 'text', text: prompt });
     } else if (!image) {
@@ -24,10 +23,9 @@ export async function POST(req: Request) {
       contentParts.push({ type: 'text', text: 'Extract and analyze all text from this image to provide a comprehensive summary.' });
     }
 
-    // Safely parse the base64 image data
+    // Pass the full data URL directly so the SDK preserves the MIME type
     if (image) {
-      const base64Data = image.includes('base64,') ? image.split('base64,')[1] : image;
-      contentParts.push({ type: 'image', image: base64Data });
+      contentParts.push({ type: 'image', image: image });
     }
 
     const google = createGoogleGenerativeAI({ apiKey });
@@ -38,7 +36,6 @@ export async function POST(req: Request) {
       messages: [{ role: 'user', content: contentParts }],
     });
 
-    // Force strict streaming headers to bypass Vercel/Nginx buffering
     return new Response(result.textStream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
