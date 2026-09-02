@@ -1,13 +1,13 @@
-import { groq } from '@ai-sdk/groq';
+import { google } from '@ai-sdk/google';
 import { streamText } from 'ai';
 
 export async function POST(req: Request) {
-  if (!process.env.GROQ_API_KEY) {
-    return new Response('GROQ_API_KEY is missing in Vercel Environment Variables.', { status: 500 });
+  if (!process.env.GEMINI_API_KEY) {
+    return new Response('GEMINI_API_KEY is missing in Vercel Environment Variables.', { status: 500 });
   }
 
   try {
-    const { prompt, length = 'bullets', image } = await req.json();
+    const { prompt, length = 'bullets', image, language = 'en' } = await req.json();
 
     let lengthInstruction = 'Summarize into clean, scannable bullet points highlighting key insights.';
     if (length === 'brief') {
@@ -16,16 +16,28 @@ export async function POST(req: Request) {
       lengthInstruction = 'Provide an executive summary followed by a comprehensive section breakdown.';
     }
 
-    const activeModel = 'openai/gpt-oss-20b';
+    // Prepare messages content supporting both text and optional image input
+    const messagesContent: any[] = [];
+    
+    if (prompt && prompt.trim() !== '') {
+      messagesContent.push({ type: 'text', text: prompt });
+    } else {
+      messagesContent.push({ type: 'text', text: 'Please extract and summarize all text from this document image.' });
+    }
 
-    const userContent = image 
-      ? `Extract all text from this document image and summarize it immediately. Instruction: ${lengthInstruction}\n\n[IMAGE DATA: ${image}]`
-      : `Instruction: ${lengthInstruction}\n\nDocument Content:\n${prompt}`;
+    if (image) {
+      messagesContent.push({ type: 'image', image: image });
+    }
 
     const result = streamText({
-      model: groq(activeModel),
-      system: 'You are a direct text summarizer. Do not ask for more input. Do not say "I am ready". Output ONLY the summary immediately.',
-      prompt: userContent,
+      model: google('gemini-1.5-flash'),
+      system: `You are an expert document summarizer and translator. Analyze the provided text or image, and output the summary entirely in the requested target language code (${language}). Format requirement: ${lengthInstruction}`,
+      messages: [
+        {
+          role: 'user',
+          content: messagesContent,
+        },
+      ],
     });
 
     return result.toTextStreamResponse();
