@@ -18,7 +18,6 @@ export async function POST(req: Request) {
       systemPrompt = 'Provide an executive summary followed by a comprehensive section breakdown.';
     }
 
-    // Process camera snap via Groq Vision Model
     if (image) {
       const result = streamText({
         model: groq('llama-3.2-11b-vision-preview'),
@@ -40,9 +39,8 @@ export async function POST(req: Request) {
       return new Response('Text prompt or camera image is required.', { status: 400 });
     }
 
-    // Process pasted text via Llama 3.1 Instant
     const result = streamText({
-      model: groq('llama-3.1-8b-instant'),
+      model: groq('llama3-8b-8192'),
       system: systemPrompt,
       prompt,
     });
