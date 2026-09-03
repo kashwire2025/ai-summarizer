@@ -1,5 +1,5 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText } from 'ai';
+import { generateText } from 'ai';
 
 export const maxDuration = 30;
 
@@ -7,7 +7,10 @@ export async function POST(req: Request) {
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'API key missing' }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY is missing' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const google = createGoogleGenerativeAI({ apiKey });
@@ -16,30 +19,41 @@ export async function POST(req: Request) {
 
     const contentParts: any[] = [];
 
-    // CRITICAL FIX 1: Gemini strictly requires text. We now guarantee a prompt is ALWAYS sent, even if the user's text box is empty.
-    const finalPrompt = (prompt && prompt.trim() !== '') 
-      ? prompt 
-      : 'Please thoroughly analyze and summarize this uploaded document.';
-    
+    const finalPrompt = (prompt && prompt.trim() !== '')
+      ? prompt
+      : 'Please analyze and summarize this document or image.';
     contentParts.push({ type: 'text', text: finalPrompt });
 
-    // CRITICAL FIX 2: Clean base64 extraction
     if (image) {
-      const base64Data = image.includes(',') ? image.split(',')[1] : image;
-      contentParts.push({ type: 'image', image: base64Data });
+      const base64Data = typeof image === 'string' && image.includes(',')
+        ? image.split(',')[1]
+        : image;
+      
+      contentParts.push({
+        type: 'image',
+        image: Buffer.from(base64Data, 'base64'),
+      });
     }
 
-    const result = await streamText({
+    const { text } = await generateText({
       model: google('gemini-1.5-flash'),
       system: `You are an expert document summarizer. Output the summary in ${language}. Format requirement: ${length}.`,
       messages: [{ role: 'user', content: contentParts }],
     });
 
-    // CRITICAL FIX 3: Output raw text stream to prevent frontend parsing crashes
-    return result.toTextStreamResponse();
-    
+    return new Response(text, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+
   } catch (error: any) {
-    console.error('API Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    console.error('Summarize API Error:', error);
+    return new Response(
+      JSON.stringify({ error: error?.message || 'Failed to generate summary' }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 }
