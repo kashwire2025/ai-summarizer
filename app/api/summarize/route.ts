@@ -1,8 +1,10 @@
+export const runtime = 'edge';
+
 export async function POST(req: Request) {
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
-      return new Response("Error: GEMINI_API_KEY is not set in Vercel Environment Variables.", { status: 200 });
+      return new Response("Error: GEMINI_API_KEY is not configured in Vercel.", { status: 200 });
     }
 
     const body = await req.json();
@@ -27,39 +29,55 @@ export async function POST(req: Request) {
         }
       }
       parts.push({
-        inline_data: {
-          mime_type: mimeType,
-          data: base64Data
-        }
+        inline_data: { mime_type: mimeType, data: base64Data }
       });
     }
 
+    // Connect to Google's REST streaming endpoint via SSE
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts }]
-        })
+        body: JSON.stringify({ contents: [{ parts }] })
       }
     );
 
-    const data = await response.json();
-
     if (!response.ok) {
-      const errorMsg = data?.error?.message || 'Gemini API call failed.';
-      return new Response(`Gemini API Error: ${errorMsg}`, { status: 200 });
+      const errorText = await response.text();
+      return new Response(`Gemini API Error: ${errorText}`, { status: 200 });
     }
 
-    const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!generatedText) {
-      return new Response("Error: Gemini returned an empty response.", { status: 200 });
-    }
+    // Transform SSE payload directly into readable stream chunks for the frontend
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
-    return new Response(generatedText, {
+    const transformStream = new TransformStream({
+      transform(chunk, controller) {
+        const text = decoder.decode(chunk);
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const json = JSON.parse(line.slice(6));
+              const textChunk = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (textChunk) {
+                controller.enqueue(encoder.encode(textChunk));
+              }
+            } catch {
+              // Ignore partial JSON buffers
+            }
+          }
+        }
+      }
+    });
+
+    return new Response(response.body?.pipeThrough(transformStream), {
       status: 200,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked'
+      }
     });
 
   } catch (err: any) {
