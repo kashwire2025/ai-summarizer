@@ -32,7 +32,6 @@ export async function POST(req: Request) {
       parts.push({ inlineData: { mimeType, data: base64Data } });
     }
 
-    // Filter out failed error messages from history before sending to Gemini
     const cleanHistory = history.filter((h: any) => h.parts && h.parts[0] && !h.parts[0].text.startsWith('Error:'));
 
     const contents = [
@@ -41,7 +40,7 @@ export async function POST(req: Request) {
     ];
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
