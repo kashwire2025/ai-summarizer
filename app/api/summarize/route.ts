@@ -4,7 +4,10 @@ export async function POST(req: Request) {
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "GEMINI_API_KEY is not configured." }), { status: 500 });
+      return new Response(
+        JSON.stringify({ error: "GEMINI_API_KEY environment variable is missing on Vercel." }), 
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     const body = await req.json();
@@ -38,18 +41,32 @@ export async function POST(req: Request) {
       });
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts }] })
-      }
-    );
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+    let response;
+    try {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts }] }),
+          signal: controller.signal
+        }
+      );
+    } catch (fetchErr: any) {
+      clearTimeout(timeoutId);
+      return new Response(
+        JSON.stringify({ error: `Gemini API connection failed: ${fetchErr.message}` }), 
+        { status: 504, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
-      return new Response(errorText, { status: response.status });
+      return new Response(errorText, { status: response.status, headers: { 'Content-Type': 'application/json' } });
     }
 
     const encoder = new TextEncoder();
@@ -84,6 +101,9 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(
+      JSON.stringify({ error: `Internal Server Error: ${err.message}` }), 
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }
