@@ -4,55 +4,50 @@ import { NextResponse } from 'next/server';
 const apiKey = process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
 
-// Fallback sequence for high traffic / 503 errors
-const MODELS = ['gemini-1.5-flash', 'gemini-1.5-pro'];
+// Active model endpoints supported by the Gemini API
+const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro'];
 
 async function generateWithRetry(prompt: string, imageBase64?: string, history: any[] = []) {
   let lastError: any = null;
 
   for (const modelName of MODELS) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const model = genAI.getGenerativeModel({ model: modelName });
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
 
-        const contents: any[] = [];
-        if (history && history.length > 0) {
-          contents.push(...history);
-        }
-
-        const parts: any[] = [];
-        if (prompt) {
-          parts.push({ text: prompt });
-        }
-
-        if (imageBase64) {
-          const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
-          const mimeMatch = imageBase64.match(/data:(.*?);base64/);
-          const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
-          parts.push({
-            inlineData: {
-              data: base64Data,
-              mimeType: mimeType
-            }
-          });
-        }
-
-        contents.push({ role: 'user', parts });
-
-        const result = await model.generateContent({ contents });
-        const response = await result.response;
-        return response.text();
-      } catch (err: any) {
-        lastError = err;
-        const errStr = String(err?.message || err);
-        if (errStr.includes('503') || errStr.includes('429') || errStr.includes('UNAVAILABLE') || errStr.includes('high demand')) {
-          await new Promise(res => setTimeout(res, 1000 * (attempt + 1)));
-        } else {
-          break;
-        }
+      const contents: any[] = [];
+      if (history && history.length > 0) {
+        contents.push(...history);
       }
+
+      const parts: any[] = [];
+      if (prompt) {
+        parts.push({ text: prompt });
+      }
+
+      if (imageBase64) {
+        const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+        const mimeMatch = imageBase64.match(/data:(.*?);base64/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+        parts.push({
+          inlineData: {
+            data: base64Data,
+            mimeType: mimeType
+          }
+        });
+      }
+
+      contents.push({ role: 'user', parts });
+
+      const result = await model.generateContent({ contents });
+      const response = await result.response;
+      return response.text();
+    } catch (err: any) {
+      lastError = err;
+      // Smoothly fail over to the next active model on high traffic (503) or rate limits
+      await new Promise(res => setTimeout(res, 600));
     }
   }
+
   throw lastError || new Error('All model endpoints are currently overloaded. Please retry in a few seconds.');
 }
 
