@@ -33,12 +33,12 @@ export async function POST(req: Request) {
         }
       }
 
+      // Corrected to camelCase inlineData and mimeType for Gemini REST API
       parts.push({
-        inline_data: { mime_type: mimeType, data: base64Data }
+        inlineData: { mimeType: mimeType, data: base64Data }
       });
     }
 
-    // Updated to gemini-2.0-flash on the v1beta endpoint
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
       {
