@@ -1,16 +1,14 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { generateText } from 'ai';
+import { streamText } from 'ai';
 
-export const maxDuration = 30;
+// CRITICAL: Forces Vercel to use Edge instead of Node.js, preventing dropped streams
+export const runtime = 'edge'; 
 
 export async function POST(req: Request) {
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY is missing' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY is missing' }), { status: 500 });
     }
 
     const google = createGoogleGenerativeAI({ apiKey });
@@ -19,41 +17,28 @@ export async function POST(req: Request) {
 
     const contentParts: any[] = [];
 
-    const finalPrompt = (prompt && prompt.trim() !== '')
-      ? prompt
-      : 'Please analyze and summarize this document or image.';
+    // Ensure text is always sent
+    const finalPrompt = (prompt && prompt.trim() !== '') 
+      ? prompt 
+      : 'Please analyze and summarize this image.';
     contentParts.push({ type: 'text', text: finalPrompt });
 
+    // The AI SDK handles data URLs natively. Pass the raw image directly.
     if (image) {
-      const base64Data = typeof image === 'string' && image.includes(',')
-        ? image.split(',')[1]
-        : image;
-      
-      contentParts.push({
-        type: 'image',
-        image: Buffer.from(base64Data, 'base64'),
-      });
+      contentParts.push({ type: 'image', image: image });
     }
 
-    const { text } = await generateText({
+    const result = await streamText({
       model: google('gemini-1.5-flash'),
       system: `You are an expert document summarizer. Output the summary in ${language}. Format requirement: ${length}.`,
       messages: [{ role: 'user', content: contentParts }],
     });
 
-    return new Response(text, {
-      status: 200,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
-
+    // Output formatted stream for the frontend parser
+    return result.toDataStreamResponse();
+    
   } catch (error: any) {
-    console.error('Summarize API Error:', error);
-    return new Response(
-      JSON.stringify({ error: error?.message || 'Failed to generate summary' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    console.error('API Error:', error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 }
