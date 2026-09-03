@@ -1,53 +1,68 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-export const runtime = 'edge';
-
 export async function POST(req: Request) {
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    if (!apiKey) return new Response('API key missing', { status: 500 });
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    if (!apiKey) {
+      return new Response("Error: GEMINI_API_KEY is not set in Vercel Environment Variables.", { status: 200 });
+    }
 
     const body = await req.json();
     const { prompt, image, language = 'English', length = 'Bullet Points' } = body;
 
-    const finalPrompt = prompt?.trim() ? prompt : `Summarize this document in ${language}. Format: ${length}.`;
-    const contentParts: any[] = [finalPrompt];
+    const finalPrompt = prompt?.trim()
+      ? prompt
+      : `Please analyze and summarize this document in ${language}. Format requirement: ${length}.`;
+
+    const parts: any[] = [{ text: finalPrompt }];
 
     if (image) {
       let base64Data = image;
       let mimeType = 'image/jpeg';
-      // Safely extract raw base64 if a data URL is sent
-      if (image.startsWith('data:')) {
-        const matches = image.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
-        if (matches) { 
-          mimeType = matches[1]; 
-          base64Data = matches[2]; 
+      if (typeof image === 'string' && image.includes(',')) {
+        const matches = image.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+        if (matches) {
+          mimeType = matches[1];
+          base64Data = matches[2];
+        } else {
+          base64Data = image.split(',')[1];
         }
       }
-      contentParts.push({ inlineData: { data: base64Data, mimeType } });
+      parts.push({
+        inline_data: {
+          mime_type: mimeType,
+          data: base64Data
+        }
+      });
     }
 
-    const result = await model.generateContentStream(contentParts);
-    const stream = new ReadableStream({
-      async start(controller) {
-        const encoder = new TextEncoder();
-        try {
-          for await (const chunk of result.stream) {
-            if (chunk.text()) controller.enqueue(encoder.encode(chunk.text()));
-          }
-        } catch (err: any) {
-          controller.enqueue(encoder.encode(`\n[Stream Error: ${err.message}]`));
-        } finally {
-          controller.close();
-        }
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts }]
+        })
       }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const errorMsg = data?.error?.message || 'Gemini API call failed.';
+      return new Response(`Gemini API Error: ${errorMsg}`, { status: 200 });
+    }
+
+    const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!generatedText) {
+      return new Response("Error: Gemini returned an empty response.", { status: 200 });
+    }
+
+    return new Response(generatedText, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
     });
 
-    return new Response(stream, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  } catch (err: any) {
+    return new Response(`Server Error: ${err.message}`, { status: 200 });
   }
 }
