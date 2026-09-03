@@ -16,7 +16,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [selectedText, setSelectedText] = useState('');
 
-  // Detect user text highlight selection
   useEffect(() => {
     const handleSelection = () => {
       const text = window.getSelection()?.toString() || '';
@@ -58,20 +57,27 @@ export default function Home() {
         })
       });
 
-      // Clear image payload after first upload so follow-ups reuse history context
       if (image) setImage(null);
 
-      const data = await res.json();
-      const aiResponse = data.result || data.error || 'Failed to generate response.';
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = { error: rawText || 'Invalid response format from server.' };
+      }
 
-      setMessages([...updatedMessages, { role: 'model', text: aiResponse }]);
-
-      // Maintain API chat history
-      setHistory([
-        ...history,
-        { role: 'user', parts: [{ text: userMessageText }] },
-        { role: 'model', parts: [{ text: aiResponse }] }
-      ]);
+      if (data.result) {
+        setMessages([...updatedMessages, { role: 'model', text: data.result }]);
+        setHistory([
+          ...history,
+          { role: 'user', parts: [{ text: userMessageText }] },
+          { role: 'model', parts: [{ text: data.result }] }
+        ]);
+      } else {
+        const errorMsg = data.error || 'Failed to generate response.';
+        setMessages([...updatedMessages, { role: 'model', text: `Error: ${errorMsg}` }]);
+      }
     } catch (err: any) {
       setMessages([...updatedMessages, { role: 'model', text: `Error: ${err.message}` }]);
     } finally {
@@ -107,16 +113,15 @@ export default function Home() {
     }
   };
 
-  const latestModelOutput = [...messages].reverse().find(m => m.role === 'model')?.text || '';
+  const latestModelOutput = [...messages].reverse().find(m => m.role === 'model' && !m.text.startsWith('Error:'))?.text || '';
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 flex flex-col items-center">
       <div className="w-full max-w-3xl space-y-6">
         <h1 className="text-2xl font-bold text-blue-400 text-center">AI Document Workbench</h1>
 
-        {/* Highlight Download Toolbar */}
         {selectedText && (
-          <div className="sticky top-4 z-50 bg-blue-600 text-white p-3 rounded-lg shadow-lg flex items-center justify-between animate-fade-in">
+          <div className="sticky top-4 z-50 bg-blue-600 text-white p-3 rounded-lg shadow-lg flex items-center justify-between">
             <span className="text-xs truncate max-w-xs">Highlighted: "{selectedText}"</span>
             <div className="flex space-x-2">
               <button
@@ -135,7 +140,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Initial File Selector */}
         <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 space-y-2">
           <label className="block text-sm font-medium text-slate-300">Upload Context Document / Image</label>
           <input
@@ -147,7 +151,6 @@ export default function Home() {
           {image && <p className="text-xs text-green-400">Document loaded into memory. Ask questions below.</p>}
         </div>
 
-        {/* Chat / Output Container */}
         <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 min-h-[300px] max-h-[500px] overflow-y-auto space-y-4">
           {messages.length === 0 ? (
             <p className="text-slate-500 italic text-center mt-12">Upload a file or send a message to start analyzing...</p>
@@ -169,7 +172,6 @@ export default function Home() {
           {loading && <p className="text-xs text-blue-400 animate-pulse">AI is thinking...</p>}
         </div>
 
-        {/* Full Summary Export & Sharing Bar */}
         {latestModelOutput && (
           <div className="flex flex-wrap gap-2 justify-end">
             <button
@@ -187,7 +189,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Input Form */}
         <form onSubmit={handleSend} className="flex gap-2">
           <input
             type="text"
