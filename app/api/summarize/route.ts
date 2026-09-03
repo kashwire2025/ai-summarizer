@@ -18,11 +18,10 @@ export async function POST(req: Request) {
 
     if (image) {
       let base64Data = image;
-      let mimeType = 'image/jpeg'; // Default fallback
+      let mimeType = 'image/jpeg';
 
       if (typeof image === 'string') {
         if (image.includes(',')) {
-          // Extract exact MIME type from Data URL header (e.g. data:application/pdf;base64,...)
           const header = image.split(',')[0];
           base64Data = image.split(',')[1];
           const mimeMatch = header.match(/data:(.*?);base64/);
@@ -30,7 +29,6 @@ export async function POST(req: Request) {
             mimeType = mimeMatch[1];
           }
         } else if (image.startsWith('JVBERi0')) {
-          // Detect raw PDF base64 signature
           mimeType = 'application/pdf';
         }
       }
@@ -40,9 +38,9 @@ export async function POST(req: Request) {
       });
     }
 
-    // Connect to Google's REST streaming endpoint via SSE
+    // Switched to v1 endpoint for stable model support
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
