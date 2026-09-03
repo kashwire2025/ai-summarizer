@@ -4,7 +4,7 @@ export async function POST(req: Request) {
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
-      return new Response("Error: GEMINI_API_KEY is not configured in Vercel.", { status: 200 });
+      return new Response(JSON.stringify({ error: "GEMINI_API_KEY is not configured." }), { status: 500 });
     }
 
     const body = await req.json();
@@ -33,7 +33,6 @@ export async function POST(req: Request) {
         }
       }
 
-      // Corrected to camelCase inlineData and mimeType for Gemini REST API
       parts.push({
         inlineData: { mimeType: mimeType, data: base64Data }
       });
@@ -50,7 +49,7 @@ export async function POST(req: Request) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      return new Response(`Gemini API Error: ${errorText}`, { status: 200 });
+      return new Response(errorText, { status: response.status });
     }
 
     const encoder = new TextEncoder();
@@ -85,6 +84,6 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    return new Response(`Server Error: ${err.message}`, { status: 200 });
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
