@@ -4,18 +4,18 @@ import { NextResponse } from 'next/server';
 const apiKey = process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
 
-// Active model endpoints supported by the Gemini API
-const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro'];
+// Supported active model endpoints
+const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
 async function generateWithRetry(prompt: string, imageBase64?: string, history: any[] = []) {
-  let lastError: any = null;
+  const errors: string[] = [];
 
   for (const modelName of MODELS) {
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
 
       const contents: any[] = [];
-      if (history && history.length > 0) {
+      if (history && Array.isArray(history) && history.length > 0) {
         contents.push(...history);
       }
 
@@ -40,15 +40,18 @@ async function generateWithRetry(prompt: string, imageBase64?: string, history: 
 
       const result = await model.generateContent({ contents });
       const response = await result.response;
-      return response.text();
+      const text = response.text();
+      if (text) {
+        return text;
+      }
     } catch (err: any) {
-      lastError = err;
-      // Smoothly fail over to the next active model on high traffic (503) or rate limits
-      await new Promise(res => setTimeout(res, 600));
+      const msg = err?.message || String(err);
+      errors.push(`${modelName}: ${msg}`);
+      await new Promise(res => setTimeout(res, 500));
     }
   }
 
-  throw lastError || new Error('All model endpoints are currently overloaded. Please retry in a few seconds.');
+  throw new Error(`Model execution failed across endpoints:\n${errors.join('\n')}`);
 }
 
 export async function POST(req: Request) {
