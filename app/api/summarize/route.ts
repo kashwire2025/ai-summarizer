@@ -4,15 +4,15 @@ import { NextResponse } from 'next/server';
 const apiKey = process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
 
-// Supported active model endpoints
-const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+const MODEL_NAME = 'gemini-3.6-flash';
 
 async function generateWithRetry(prompt: string, imageBase64?: string, history: any[] = []) {
-  const errors: string[] = [];
+  let lastError: any = null;
 
-  for (const modelName of MODELS) {
+  // Retry up to 3 times on 503/429 transient server issues
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const model = genAI.getGenerativeModel({ model: modelName });
+      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
       const contents: any[] = [];
       if (history && Array.isArray(history) && history.length > 0) {
@@ -45,13 +45,17 @@ async function generateWithRetry(prompt: string, imageBase64?: string, history: 
         return text;
       }
     } catch (err: any) {
-      const msg = err?.message || String(err);
-      errors.push(`${modelName}: ${msg}`);
-      await new Promise(res => setTimeout(res, 500));
+      lastError = err;
+      const msg = String(err?.message || err);
+      if (msg.includes('503') || msg.includes('429') || msg.includes('UNAVAILABLE') || msg.includes('high demand')) {
+        await new Promise(res => setTimeout(res, 1200 * (attempt + 1)));
+      } else {
+        throw err;
+      }
     }
   }
 
-  throw new Error(`Model execution failed across endpoints:\n${errors.join('\n')}`);
+  throw lastError || new Error('Service overloaded after retries.');
 }
 
 export async function POST(req: Request) {
