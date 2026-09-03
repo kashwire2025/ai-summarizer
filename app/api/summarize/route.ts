@@ -1,44 +1,53 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText } from 'ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// CRITICAL: Forces Vercel to use Edge instead of Node.js, preventing dropped streams
-export const runtime = 'edge'; 
+export const runtime = 'edge';
 
 export async function POST(req: Request) {
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY is missing' }), { status: 500 });
-    }
+    if (!apiKey) return new Response('API key missing', { status: 500 });
 
-    const google = createGoogleGenerativeAI({ apiKey });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
     const body = await req.json();
     const { prompt, image, language = 'English', length = 'Bullet Points' } = body;
 
-    const contentParts: any[] = [];
+    const finalPrompt = prompt?.trim() ? prompt : `Summarize this document in ${language}. Format: ${length}.`;
+    const contentParts: any[] = [finalPrompt];
 
-    // Ensure text is always sent
-    const finalPrompt = (prompt && prompt.trim() !== '') 
-      ? prompt 
-      : 'Please analyze and summarize this image.';
-    contentParts.push({ type: 'text', text: finalPrompt });
-
-    // The AI SDK handles data URLs natively. Pass the raw image directly.
     if (image) {
-      contentParts.push({ type: 'image', image: image });
+      let base64Data = image;
+      let mimeType = 'image/jpeg';
+      // Safely extract raw base64 if a data URL is sent
+      if (image.startsWith('data:')) {
+        const matches = image.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+        if (matches) { 
+          mimeType = matches[1]; 
+          base64Data = matches[2]; 
+        }
+      }
+      contentParts.push({ inlineData: { data: base64Data, mimeType } });
     }
 
-    const result = await streamText({
-      model: google('gemini-1.5-flash'),
-      system: `You are an expert document summarizer. Output the summary in ${language}. Format requirement: ${length}.`,
-      messages: [{ role: 'user', content: contentParts }],
+    const result = await model.generateContentStream(contentParts);
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        try {
+          for await (const chunk of result.stream) {
+            if (chunk.text()) controller.enqueue(encoder.encode(chunk.text()));
+          }
+        } catch (err: any) {
+          controller.enqueue(encoder.encode(`\n[Stream Error: ${err.message}]`));
+        } finally {
+          controller.close();
+        }
+      }
     });
 
-    // Output formatted stream for the frontend parser
-    return result.toDataStreamResponse();
-    
+    return new Response(stream, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   } catch (error: any) {
-    console.error('API Error:', error);
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 }

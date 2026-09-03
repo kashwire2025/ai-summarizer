@@ -12,6 +12,7 @@
     "@ai-sdk/google": "^4.0.61",
     "@ai-sdk/groq": "^4.0.36",
     "@ai-sdk/react": "^4.0.92",
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.112.4",
     "ai": "^7.0.89",
     "lucide-react": "^1.39.0",
