@@ -41,64 +41,30 @@ export async function POST(req: Request) {
       });
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
-
-    let response;
-    try {
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts }] }),
-          signal: controller.signal
-        }
-      );
-    } catch (fetchErr: any) {
-      clearTimeout(timeoutId);
-      return new Response(
-        JSON.stringify({ error: `Gemini API connection failed: ${fetchErr.message}` }), 
-        { status: 504, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    clearTimeout(timeoutId);
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts }] })
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
       return new Response(errorText, { status: response.status, headers: { 'Content-Type': 'application/json' } });
     }
 
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
+    const data = await response.json();
+    const textResult = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
 
-    const transformStream = new TransformStream({
-      transform(chunk, controller) {
-        const text = decoder.decode(chunk);
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const json = JSON.parse(line.slice(6));
-              const textChunk = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (textChunk) {
-                controller.enqueue(encoder.encode(textChunk));
-              }
-            } catch {
-              // Ignore partial JSON buffers
-            }
-          }
-        }
+    return new Response(
+      JSON.stringify({ result: textResult }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
       }
-    });
-
-    return new Response(response.body?.pipeThrough(transformStream), {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked'
-      }
-    });
+    );
 
   } catch (err: any) {
     return new Response(
