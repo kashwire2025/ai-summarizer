@@ -12,22 +12,29 @@ export async function POST(req: Request) {
 
     const finalPrompt = prompt?.trim()
       ? prompt
-      : `Please analyze and summarize this document in ${language}. Format requirement: ${length}.`;
+      : `Please analyze and summarize this document/file in ${language}. Format requirement: ${length}.`;
 
     const parts: any[] = [{ text: finalPrompt }];
 
     if (image) {
       let base64Data = image;
-      let mimeType = 'image/jpeg';
-      if (typeof image === 'string' && image.includes(',')) {
-        const matches = image.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
-        if (matches) {
-          mimeType = matches[1];
-          base64Data = matches[2];
-        } else {
+      let mimeType = 'image/jpeg'; // Default fallback
+
+      if (typeof image === 'string') {
+        if (image.includes(',')) {
+          // Extract exact MIME type from Data URL header (e.g. data:application/pdf;base64,...)
+          const header = image.split(',')[0];
           base64Data = image.split(',')[1];
+          const mimeMatch = header.match(/data:(.*?);base64/);
+          if (mimeMatch && mimeMatch[1]) {
+            mimeType = mimeMatch[1];
+          }
+        } else if (image.startsWith('JVBERi0')) {
+          // Detect raw PDF base64 signature
+          mimeType = 'application/pdf';
         }
       }
+
       parts.push({
         inline_data: { mime_type: mimeType, data: base64Data }
       });
@@ -48,7 +55,6 @@ export async function POST(req: Request) {
       return new Response(`Gemini API Error: ${errorText}`, { status: 200 });
     }
 
-    // Transform SSE payload directly into readable stream chunks for the frontend
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
