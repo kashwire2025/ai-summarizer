@@ -9,7 +9,6 @@ interface Message {
   text: string;
 }
 
-// Ensure connection points to your enabled Supabase instance
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tczk.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -19,6 +18,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isDark, setIsDark] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [language, setLanguage] = useState('English');
 
   const saveChatToSupabase = async (newMessages: Message[]) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -66,16 +66,21 @@ export default function Home() {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: query, history: messages }),
+        body: JSON.stringify({ prompt: query, history: messages, language }),
       });
+
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch response');
+      }
       
       const aiMessage: Message = { role: 'model', text: data.text || 'Analysis complete.' };
       const finalMessages = [...updatedMessages, aiMessage];
       setMessages(finalMessages);
       await saveChatToSupabase(finalMessages);
-    } catch (err) {
-      const errorMessage: Message = { role: 'model', text: 'Error generating response. Please try again.' };
+    } catch (err: any) {
+      const errorMessage: Message = { role: 'model', text: `API Error: ${err.message || 'Please check GEMINI_API_KEY on Vercel.'}` };
       setMessages([...updatedMessages, errorMessage]);
     } finally {
       setLoading(false);
@@ -87,15 +92,34 @@ export default function Home() {
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Header Layout */}
-        <div className={`flex items-center justify-between w-full pb-4 border-b ${isDark ? 'border-slate-800' : 'border-gray-300'}`}>
-          <h1 className="text-xl sm:text-2xl font-bold text-blue-600">AI Document Workbench</h1>
+        <div className={`flex flex-wrap items-center justify-between w-full pb-4 border-b gap-2 ${isDark ? 'border-slate-800' : 'border-gray-300'}`}>
+          <h1 className="text-xl sm:text-2xl font-bold text-blue-500">AI Document Workbench</h1>
+          
           <div className="flex items-center gap-2">
+            {/* Language Preference Dropdown */}
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className={`px-2 py-1.5 rounded-lg text-xs font-medium border outline-none ${
+                isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-gray-300 text-slate-800'
+              }`}
+            >
+              <option value="English">🌐 English</option>
+              <option value="French">🌐 French</option>
+              <option value="Spanish">🌐 Spanish</option>
+              <option value="German">🌐 German</option>
+              <option value="Hausa">🌐 Hausa</option>
+              <option value="Yoruba">🌐 Yoruba</option>
+              <option value="Igbo">🌐 Igbo</option>
+            </select>
+
             <button
               onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-xs sm:text-sm whitespace-nowrap"
             >
               Sign in with Google
             </button>
+
             <button
               onClick={() => setIsDark(!isDark)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border whitespace-nowrap ${isDark ? 'border-slate-700 bg-slate-800 text-white' : 'border-gray-300 bg-white text-slate-800'}`}
