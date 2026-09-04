@@ -15,8 +15,8 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Use gemini-2.5-flash model
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // Updated model as indicated by the API response
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const systemPrompt = `You are an AI Document Workbench assistant. Respond strictly in ${language}.\n\nUser request: ${prompt}`;
 
