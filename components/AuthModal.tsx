@@ -9,9 +9,7 @@ interface AuthModalProps {
   onSuccess?: () => void;
 }
 
-export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,31 +34,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     }
   };
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      if (onSuccess) onSuccess();
-      onClose();
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
+      <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
         <div className="flex items-center justify-between border-b pb-3 dark:border-gray-700">
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Sign In</h3>
           <button
@@ -77,7 +53,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           </div>
         )}
 
-        <div className="mt-6 space-y-4">
+        <div className="mt-6">
           <button
             onClick={handleGoogleSignIn}
             disabled={loading}
@@ -103,48 +79,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             </svg>
             Continue with Google
           </button>
-
-          <div className="relative flex items-center justify-center">
-            <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-            <span className="bg-white px-2 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-              Or with email
-            </span>
-            <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-          </div>
-
-          <form onSubmit={handleEmailAuth} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                Email Address
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              Sign In
-            </button>
-          </form>
         </div>
       </div>
     </div>
