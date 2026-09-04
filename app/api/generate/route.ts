@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Active models ordered by priority fallback
+// Active models ordered by speed and fallback capability
 const MODELS = [
   'gemini-3.7-flash',
-  'gemini-3.6-flash',
-  'gemini-3.5-flash'
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-pro-preview'
 ];
 
 export async function POST(req: Request) {
@@ -33,11 +33,11 @@ export async function POST(req: Request) {
         responseText = result.response.text();
         
         if (responseText) {
-          console.log(`Success using model: ${modelName}`);
+          console.log(`Successfully generated using: ${modelName}`);
           break;
         }
       } catch (err: any) {
-        console.warn(`Model ${modelName} failed, falling back to next model:`, err.message);
+        console.warn(`Model ${modelName} failed, trying next fallback:`, err.message);
         lastError = err;
       }
     }
