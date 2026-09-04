@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Priority order of models to attempt
+// Active models ordered by priority fallback
 const MODELS = [
-  'gemini-2.5-flash',
-  'gemini-1.5-flash',
-  'gemini-1.5-pro'
+  'gemini-3.7-flash',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash'
 ];
 
 export async function POST(req: Request) {
@@ -26,7 +26,6 @@ export async function POST(req: Request) {
     let responseText = null;
     let lastError = null;
 
-    // Loop through available models in sequence
     for (const modelName of MODELS) {
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
@@ -34,12 +33,12 @@ export async function POST(req: Request) {
         responseText = result.response.text();
         
         if (responseText) {
-          break; // Successfully got response, exit retry loop
+          console.log(`Success using model: ${modelName}`);
+          break;
         }
       } catch (err: any) {
-        console.warn(`Model ${modelName} failed or timed out:`, err.message);
+        console.warn(`Model ${modelName} failed, falling back to next model:`, err.message);
         lastError = err;
-        // Automatically continues to next model in MODELS array
       }
     }
 
@@ -47,7 +46,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ text: responseText });
     }
 
-    // If all models in the array failed
     return NextResponse.json(
       { error: lastError?.message || 'All AI models failed to respond.' },
       { status: 500 }
