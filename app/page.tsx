@@ -1,12 +1,18 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'model';
   text: string;
 }
+
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
@@ -198,7 +204,17 @@ export default function Home() {
         
         {/* Header & Theme Switcher */}
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-500">AI Document Workbench</h1>
+          <div className="flex items-center justify-between w-full mb-6 gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-blue-500">AI Document Workbench</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-xs sm:text-sm whitespace-nowrap"
+          >
+            Sign in with Google
+          </button>
+        </div>
+      </div>
           <button
             onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm mr-2"
