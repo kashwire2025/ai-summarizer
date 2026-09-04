@@ -170,6 +170,12 @@ export default function Home() {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-blue-500">AI Document Workbench</h1>
           <button
+            onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm mr-2"
+          >
+            Sign in with Google
+          </button>
+          <button
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
               isDark ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
