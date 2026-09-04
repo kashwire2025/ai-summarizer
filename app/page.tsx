@@ -20,7 +20,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
 
   // Sync chat history with Supabase DB
-  const saveChatToSupabase = async (newMessages) => {
+  const saveChatToSupabase = async (newMessages: Message[]) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
