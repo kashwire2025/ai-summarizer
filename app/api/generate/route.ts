@@ -8,16 +8,15 @@ export async function POST(req: Request) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'GEMINI_API_KEY is not configured in Vercel environment variables.' },
+        { error: 'GEMINI_API_KEY is missing in Vercel environment variables.' },
         { status: 500 }
       );
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Use gemini-2.5-flash or fallback model string
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const systemPrompt = `You are a helpful AI Document Workbench assistant. Respond concisely in ${language}. User query: ${prompt}`;
+    const systemPrompt = `You are a helpful AI Document Workbench assistant. Translate and respond strictly in ${language}. Query: ${prompt}`;
 
     const result = await model.generateContent(systemPrompt);
     const responseText = result.response.text();
@@ -26,7 +25,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error('Gemini API Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: error.message || 'Failed to generate response' },
       { status: 500 }
     );
   }

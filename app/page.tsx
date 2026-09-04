@@ -13,6 +13,14 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tczk.supaba
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+const LANGUAGES = [
+  'English', 'French', 'Spanish', 'German', 'Hausa',
+  'Mandarin Chinese', 'Arabic', 'Hindi', 'Portuguese', 'Russian',
+  'Japanese', 'Korean', 'Italian', 'Dutch', 'Turkish',
+  'Vietnamese', 'Polish', 'Ukrainian', 'Filipino', 'Swahili',
+  'Thai', 'Indonesian', 'Malay', 'Bengali', 'Persian'
+];
+
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -80,11 +88,29 @@ export default function Home() {
       setMessages(finalMessages);
       await saveChatToSupabase(finalMessages);
     } catch (err: any) {
-      const errorMessage: Message = { role: 'model', text: `API Error: ${err.message || 'Please check GEMINI_API_KEY on Vercel.'}` };
+      const errorMessage: Message = { role: 'model', text: `API Error: ${err.message || 'Please verify GEMINI_API_KEY settings.'}` };
       setMessages([...updatedMessages, errorMessage]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const downloadFile = (content: string, filename: string, type: string) => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadChat = () => {
+    if (messages.length === 0) return;
+    const exportText = messages.map(m => `[${m.role.toUpperCase()}]:\n${m.text}\n`).join('\n---\n\n');
+    downloadFile(exportText, `document-workbench-${Date.now()}.md`, 'text/markdown');
   };
 
   return (
@@ -96,7 +122,7 @@ export default function Home() {
           <h1 className="text-xl sm:text-2xl font-bold text-blue-500">AI Document Workbench</h1>
           
           <div className="flex items-center gap-2">
-            {/* Language Preference Dropdown */}
+            {/* 25 Global Languages Dropdown */}
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
@@ -104,13 +130,9 @@ export default function Home() {
                 isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-gray-300 text-slate-800'
               }`}
             >
-              <option value="English">🌐 English</option>
-              <option value="French">🌐 French</option>
-              <option value="Spanish">🌐 Spanish</option>
-              <option value="German">🌐 German</option>
-              <option value="Hausa">🌐 Hausa</option>
-              <option value="Yoruba">🌐 Yoruba</option>
-              <option value="Igbo">🌐 Igbo</option>
+              {LANGUAGES.map((lang) => (
+                <option key={lang} value={lang}>🌐 {lang}</option>
+              ))}
             </select>
 
             <button
@@ -134,29 +156,40 @@ export default function Home() {
           <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>Upload Context Document / Image</label>
           <input 
             type="file" 
-            accept="image/*,.pdf"
+            accept="image/*,.pdf,.txt,.md"
             className={`block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 ${isDark ? 'text-slate-400' : 'text-gray-600'}`}
           />
         </div>
 
-        {/* Quick Action Chips */}
-        <div className="flex flex-wrap gap-2">
-          {['📋 Executive Summary', '✅ Key Action Items', '💡 Top Takeaways', '📊 Analyze Trends & Data'].map((text) => (
+        {/* Quick Action Chips & Export Download Button */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-2">
+            {['📋 Executive Summary', '✅ Key Action Items', '💡 Top Takeaways', '📊 Analyze Trends & Data'].map((text) => (
+              <button
+                key={text}
+                onClick={() => handleSendMessage(text)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                  isDark 
+                    ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200' 
+                    : 'bg-white hover:bg-gray-50 border-gray-300 text-slate-800 shadow-sm'
+                }`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+
+          {messages.length > 0 && (
             <button
-              key={text}
-              onClick={() => handleSendMessage(text)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-                isDark 
-                  ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200' 
-                  : 'bg-white hover:bg-gray-50 border-gray-300 text-slate-800 shadow-sm'
-              }`}
+              onClick={handleDownloadChat}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-xs transition-colors flex items-center gap-1"
             >
-              {text}
+              📥 Download File (.md)
             </button>
-          ))}
+          )}
         </div>
 
-        {/* Chat / Response Output Window */}
+        {/* Chat Output Window */}
         <div className={`p-4 rounded-xl border min-h-[280px] max-h-[450px] overflow-y-auto ${isDark ? 'border-slate-800 bg-slate-800/30' : 'border-gray-200 bg-white shadow-sm'}`}>
           {messages.length === 0 ? (
             <p className={`text-sm italic text-center mt-20 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
@@ -165,12 +198,22 @@ export default function Home() {
           ) : (
             <div className="space-y-4">
               {messages.map((msg, idx) => (
-                <div key={idx} className={`p-3 rounded-lg text-sm ${
-                  msg.role === 'user' 
-                    ? 'bg-blue-600 text-white ml-auto max-w-[85%]' 
-                    : isDark ? 'bg-slate-800 border border-slate-700 text-slate-100' : 'bg-gray-100 border border-gray-200 text-slate-900'
-                }`}>
-                  <ReactMarkdown>{msg.text}</ReactMarkdown>
+                <div key={idx} className="space-y-1">
+                  <div className={`p-3 rounded-lg text-sm ${
+                    msg.role === 'user' 
+                      ? 'bg-blue-600 text-white ml-auto max-w-[85%]' 
+                      : isDark ? 'bg-slate-800 border border-slate-700 text-slate-100' : 'bg-gray-100 border border-gray-200 text-slate-900'
+                  }`}>
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  </div>
+                  {msg.role === 'model' && (
+                    <button
+                      onClick={() => downloadFile(msg.text, `response-${idx + 1}.txt`, 'text/plain')}
+                      className="text-[10px] text-blue-400 hover:underline ml-1"
+                    >
+                      💾 Download Response
+                    </button>
+                  )}
                 </div>
               ))}
               {loading && <p className="text-xs text-blue-500 animate-pulse">AI is thinking...</p>}
