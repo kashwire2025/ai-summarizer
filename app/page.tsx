@@ -9,7 +9,8 @@ interface Message {
   text: string;
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tczk.supabase.co';
+// Ensure these match your Ogihotu Supabase project credentials
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ogihotu.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -88,7 +89,7 @@ export default function Home() {
       setMessages(finalMessages);
       await saveChatToSupabase(finalMessages);
     } catch (err: any) {
-      const errorMessage: Message = { role: 'model', text: `API Error: ${err.message || 'Please verify GEMINI_API_KEY settings.'}` };
+      const errorMessage: Message = { role: 'model', text: `API Error: ${err.message || 'Please verify API configuration.'}` };
       setMessages([...updatedMessages, errorMessage]);
     } finally {
       setLoading(false);
@@ -122,7 +123,6 @@ export default function Home() {
           <h1 className="text-xl sm:text-2xl font-bold text-blue-500">AI Document Workbench</h1>
           
           <div className="flex items-center gap-2">
-            {/* 25 Global Languages Dropdown */}
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
@@ -136,7 +136,10 @@ export default function Home() {
             </select>
 
             <button
-              onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
+              onClick={() => supabase.auth.signInWithOAuth({ 
+                provider: 'google',
+                options: { redirectTo: 'https://ai-summarizer-5vbj.vercel.app' }
+              })}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-xs sm:text-sm whitespace-nowrap"
             >
               Sign in with Google
