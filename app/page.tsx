@@ -12,6 +12,36 @@ export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [image, setImage] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+
+  // Sync chat history with Supabase DB
+  const saveChatToSupabase = async (newMessages) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from('chats')
+      .upsert({
+        user_id: user.id,
+        messages: newMessages,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+  };
+
+  const loadChatFromSupabase = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('chats')
+      .select('messages')
+      .eq('user_id', user.id)
+      .single();
+
+    if (data && data.messages) {
+      setMessages(data.messages);
+    }
+  };
+
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedText, setSelectedText] = useState('');
