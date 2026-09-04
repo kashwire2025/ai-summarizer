@@ -14,9 +14,11 @@ export async function POST(req: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    
+    // Use gemini-2.5-flash model
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-    const systemPrompt = `You are a helpful AI Document Workbench assistant. Translate and respond strictly in ${language}. Query: ${prompt}`;
+    const systemPrompt = `You are an AI Document Workbench assistant. Respond strictly in ${language}.\n\nUser request: ${prompt}`;
 
     const result = await model.generateContent(systemPrompt);
     const responseText = result.response.text();
