@@ -204,7 +204,7 @@ export default function Home() {
         
         {/* Header & Theme Switcher */}
         <div className="flex justify-between items-center">
-          <div className="flex items-center justify-between w-full mb-6 gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-blue-500">AI Document Workbench</h1>
         <div className="flex items-center gap-2">
           <button
@@ -215,12 +215,8 @@ export default function Home() {
           </button>
         </div>
       </div>
-          <button
-            onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm mr-2"
-          >
-            Sign in with Google
-          </button>
+      </div>
+          
           <button
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
