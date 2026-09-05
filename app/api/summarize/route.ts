@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 
 export async function POST(req: Request) {
   try {
@@ -13,9 +12,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const ai = new GoogleGenAI({ apiKey });
-
-    let systemInstruction = `You are an expert AI summarizer. Respond in ${language || "English"}.`;
+    let systemInstruction = `You are an expert AI content assistant. Respond in ${language || "English"}.`;
     let userPrompt = prompt;
 
     if (action === "execSummary") {
@@ -28,27 +25,34 @@ export async function POST(req: Request) {
       userPrompt = `Analyze key trends and data points in the following text:\n\n${prompt}`;
     }
 
-    // Array of standard model identifiers to iterate through in case one is restricted
-    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
+    // Modern active model fallback array
+    const modelsToTry = ["gemini-2.0-flash", "gemini-2.5-flash"];
     let resultText = "";
     let lastError = "";
 
     for (const modelName of modelsToTry) {
       try {
-        const response = await ai.models.generateContent({
-          model: modelName,
-          contents: userPrompt,
-          config: {
-            systemInstruction: systemInstruction,
-          },
-        });
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: `${systemInstruction}\n\n${userPrompt}` }] }]
+            }),
+          }
+        );
 
-        if (response.text) {
-          resultText = response.text;
+        const data = await res.json();
+
+        if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          resultText = data.candidates[0].content.parts[0].text;
           break;
+        } else {
+          lastError = data.error?.message || "Model request returned no valid candidate.";
         }
       } catch (err: any) {
-        lastError = err.message || "Model request failed";
+        lastError = err.message || "Network request failed.";
       }
     }
 
