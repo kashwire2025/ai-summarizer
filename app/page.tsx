@@ -45,11 +45,13 @@ export default function Home() {
 
     if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
       try {
-        const pdfjsLib = await import("pdfjs-dist");
+        const fileData = await file.arrayBuffer();
+        // Dynamically load pdfjs build without triggering Node server bundle
+        const pdfjsLib = await import("pdfjs-dist/build/pdf.mjs");
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const loadingTask = pdfjsLib.getDocument({ data: fileData });
+        const pdf = await loadingTask.promise;
         let extractedText = "";
 
         for (let i = 1; i <= pdf.numPages; i++) {
@@ -61,7 +63,7 @@ export default function Home() {
 
         setInputText(extractedText.trim());
       } catch (err) {
-        setOutput("Error parsing PDF file.");
+        setOutput("Error reading PDF file. Try converting or pasting text directly.");
       }
     } else {
       const reader = new FileReader();
