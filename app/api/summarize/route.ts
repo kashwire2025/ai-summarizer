@@ -1,78 +1,47 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { NextResponse } from 'next/server';
-
-const apiKey = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(apiKey);
-
-const MODEL_NAME = 'gemini-3.6-flash';
-
-async function generateWithRetry(prompt: string, imageBase64?: string, history: any[] = []) {
-  let lastError: any = null;
-
-  // Retry up to 3 times on 503/429 transient server issues
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
-      const contents: any[] = [];
-      if (history && Array.isArray(history) && history.length > 0) {
-        contents.push(...history);
-      }
-
-      const parts: any[] = [];
-      if (prompt) {
-        parts.push({ text: prompt });
-      }
-
-      if (imageBase64) {
-        const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
-        const mimeMatch = imageBase64.match(/data:(.*?);base64/);
-        const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
-        parts.push({
-          inlineData: {
-            data: base64Data,
-            mimeType: mimeType
-          }
-        });
-      }
-
-      contents.push({ role: 'user', parts });
-
-      const result = await model.generateContent({ contents });
-      const response = await result.response;
-      const text = response.text();
-      if (text) {
-        return text;
-      }
-    } catch (err: any) {
-      lastError = err;
-      const msg = String(err?.message || err);
-      if (msg.includes('503') || msg.includes('429') || msg.includes('UNAVAILABLE') || msg.includes('high demand')) {
-        await new Promise(res => setTimeout(res, 1200 * (attempt + 1)));
-      } else {
-        throw err;
-      }
-    }
-  }
-
-  throw lastError || new Error('Service overloaded after retries.');
-}
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { prompt, image, history } = body;
+    const { prompt, action, language } = await req.json();
 
-    if (!prompt && !image) {
-      return NextResponse.json({ error: 'Prompt or image is required.' }, { status: 400 });
+    if (!prompt) {
+      return NextResponse.json({ error: "Prompt or text is required." }, { status: 400 });
     }
 
-    const textResult = await generateWithRetry(prompt || 'Summarize this content.', image, history);
-    return NextResponse.json({ result: textResult });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Service temporarily unavailable.' },
-      { status: 500 }
+    const targetLanguage = language || "English";
+
+    // System instruction forcing output in target language
+    const systemInstruction = `You are an expert AI document workbench assistant.
+CRITICAL MANDATE: You MUST respond strictly in the following language: ${targetLanguage}.
+Do not reply in English unless the requested language is English.
+Analyze the user's input and perform the action "${action || "execSummary"}" fully written in ${targetLanguage}.`;
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "Gemini API key not configured." }, { status: 500 });
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: `${systemInstruction}\n\nUser Input:\n${prompt}` }],
+            },
+          ],
+        }),
+      }
     );
+
+    const data = await response.json();
+    const resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+
+    return NextResponse.json({ result: resultText });
+  } catch (err) {
+    return NextResponse.json({ error: "Failed to process request." }, { status: 500 });
   }
 }

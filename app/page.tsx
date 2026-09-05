@@ -28,7 +28,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          text: inputText, 
+          prompt: inputText, 
           action: actionType, 
           language: selectedLanguage 
         }),
