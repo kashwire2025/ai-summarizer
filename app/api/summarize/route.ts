@@ -25,17 +25,12 @@ export async function POST(req: Request) {
       userPrompt = `Analyze key trends and data points in the following text:\n\n${prompt}`;
     }
 
-    // Stable Production Model Fallback List
-    const modelsToTry = [
-      "gemini-2.0-flash",
-      "gemini-2.0-flash-lite",
-      "gemini-1.5-flash-8b"
-    ];
-
+    // Standard list of active models sorted by priority
+    const candidates = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
     let resultText = "";
     let lastError = "";
 
-    for (const modelName of modelsToTry) {
+    for (const modelName of candidates) {
       try {
         const res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
@@ -52,9 +47,9 @@ export async function POST(req: Request) {
 
         if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
           resultText = data.candidates[0].content.parts[0].text;
-          break;
+          break; // Success! Exit loop.
         } else {
-          lastError = data.error?.message || `Model ${modelName} returned no valid content.`;
+          lastError = data.error?.message || `Model ${modelName} returned status ${res.status}`;
         }
       } catch (err: any) {
         lastError = err.message || "Network request failed.";
@@ -63,7 +58,7 @@ export async function POST(req: Request) {
 
     if (!resultText) {
       return NextResponse.json(
-        { error: `API Call Failed: ${lastError}` },
+        { error: `API Execution Failed: ${lastError}` },
         { status: 500 }
       );
     }
