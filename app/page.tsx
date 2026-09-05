@@ -4,7 +4,6 @@ import { useState } from "react";
 import { translations, languagesList } from "@/lib/translations";
 import { createClient } from "@supabase/supabase-js";
 
-// Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -17,7 +16,6 @@ export default function Home() {
 
   const t = translations[selectedLanguage] || translations["English"];
 
-  // Google OAuth Login Trigger
   const handleGoogleSignIn = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -28,7 +26,11 @@ export default function Home() {
   };
 
   const handleAction = async (actionType: string) => {
-    setActiveAction(actionType);
+    if (!inputText.trim()) {
+      setOutput("Please enter document text or type a prompt first.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -36,7 +38,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          prompt: inputText || "Analyze current context", 
+          prompt: inputText, 
           action: actionType, 
           language: selectedLanguage 
         }),
@@ -54,8 +56,6 @@ export default function Home() {
       setLoading(false);
     }
   };
-
-  const setActiveAction = (action: string) => {};
 
   return (
     <main className="min-h-screen bg-[#0b1120] text-white p-4 md:p-6 font-sans">
@@ -128,19 +128,19 @@ export default function Home() {
           📥 {t.download}
         </button>
 
-        {/* AI Output Box (Middle Display) */}
+        {/* AI Output Box */}
         <div className="bg-[#131c31] p-6 rounded-xl border border-gray-800 min-h-[220px]">
           {loading ? (
             <p className="text-blue-400 animate-pulse text-sm">Processing in {selectedLanguage}...</p>
           ) : (
             <div className="whitespace-pre-wrap text-gray-200 text-sm leading-relaxed">
-              {output || "Select an action or type in the prompt box below to analyze document context."}
+              {output || "Select an action or type in the prompt box below and click Send to analyze context."}
             </div>
           )}
         </div>
 
-        {/* Bottom Input Chat Box */}
-        <div className="bg-[#131c31] p-4 rounded-xl border border-gray-800 space-y-2">
+        {/* Bottom Input Chat Box with Send Button */}
+        <div className="bg-[#131c31] p-4 rounded-xl border border-gray-800 space-y-3">
           <label className="block text-sm font-medium text-gray-300">{t.inputTextLabel}</label>
           <textarea
             rows={3}
@@ -149,6 +149,14 @@ export default function Home() {
             placeholder={t.placeholder}
             className="w-full bg-[#1b2744] text-gray-100 p-3 rounded-lg border border-gray-700 focus:outline-none focus:border-blue-500 text-sm"
           />
+          <div className="flex justify-end">
+            <button
+              onClick={() => handleAction("customPrompt")}
+              className="bg-blue-600 hover:bg-blue-700 px-6 py-2.5 rounded-lg text-sm font-semibold transition flex items-center gap-2"
+            >
+              🚀 Send / Analyze
+            </button>
+          </div>
         </div>
 
       </div>
