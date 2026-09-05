@@ -9,8 +9,22 @@ export default function Home() {
   const [inputText, setInputText] = useState("");
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fileName, setFileName] = useState("");
 
   const t = translations[selectedLanguage] || translations["English"];
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFileName(file.name);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        setInputText(text);
+      };
+      reader.readAsText(file);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
@@ -89,9 +103,9 @@ export default function Home() {
           <div className="flex items-center gap-3 bg-[#1b2744] p-2 rounded-lg border border-gray-700">
             <label className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm cursor-pointer font-medium">
               {t.chooseFile}
-              <input type="file" className="hidden" />
+              <input type="file" accept=".txt,.md,.csv,.json" onChange={handleFileUpload} className="hidden" />
             </label>
-            <span className="text-sm text-gray-400">{t.noFile}</span>
+            <span className="text-sm text-gray-400">{fileName || t.noFile}</span>
           </div>
         </div>
 
