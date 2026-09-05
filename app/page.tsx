@@ -3,9 +3,6 @@
 import { useState, useEffect } from "react";
 import { translations, languagesList } from "@/lib/translations";
 import { createClient } from "@supabase/supabase-js";
-import * as pdfjsLib from "pdfjs-dist";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 export default function Home() {
   const [selectedLanguage, setSelectedLanguage] = useState("English");
@@ -27,12 +24,10 @@ export default function Home() {
   useEffect(() => {
     const supabase = getSupabase();
     
-    // Check initial auth state
     supabase.auth.getUser().then(({ data }) => {
       if (data?.user) setUser(data.user);
     });
 
-    // Listen to OAuth login redirect callback
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
     });
@@ -50,6 +45,9 @@ export default function Home() {
 
     if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
       try {
+        const pdfjsLib = await import("pdfjs-dist");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         let extractedText = "";
