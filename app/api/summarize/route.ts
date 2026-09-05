@@ -12,7 +12,9 @@ export async function POST(req: Request) {
       );
     }
 
-    let systemInstruction = `You are an expert AI content assistant. Respond in ${language || "English"}.`;
+    // Strict system instruction preventing thought logs/scratchpads
+    const systemInstruction = `You are a concise, professional AI content assistant. Output ONLY your final response. Do NOT include internal reasoning, thinking steps, options analysis, or metadata breakdown. Respond directly in ${language || "English"}.`;
+
     let userPrompt = prompt;
 
     if (action === "execSummary") {
@@ -25,7 +27,7 @@ export async function POST(req: Request) {
       userPrompt = `Analyze key trends and data points in the following text:\n\n${prompt}`;
     }
 
-    // 1. Dynamically fetch models supported by this specific API key
+    // Dynamic model discovery endpoint
     let modelsToTry: string[] = [];
     try {
       const listRes = await fetch(
@@ -44,10 +46,9 @@ export async function POST(req: Request) {
           .map((m: any) => m.name.replace("models/", ""));
       }
     } catch (e) {
-      console.error("Failed to fetch model list dynamic fallback:", e);
+      console.error("Failed to fetch model list:", e);
     }
 
-    // Fallback if ListModels endpoint fails or is restricted
     if (modelsToTry.length === 0) {
       modelsToTry = ["gemini-2.0-flash", "gemini-2.0-flash-lite"];
     }
@@ -55,7 +56,6 @@ export async function POST(req: Request) {
     let resultText = "";
     let lastError = "";
 
-    // 2. Iterate through discoverable supported models
     for (const modelName of modelsToTry) {
       try {
         const res = await fetch(
@@ -73,9 +73,9 @@ export async function POST(req: Request) {
 
         if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
           resultText = data.candidates[0].content.parts[0].text;
-          break; // Success!
+          break;
         } else {
-          lastError = data.error?.message || `Model ${modelName} HTTP status ${res.status}`;
+          lastError = data.error?.message || `HTTP status ${res.status}`;
         }
       } catch (err: any) {
         lastError = err.message || "Network request failed.";
@@ -89,7 +89,16 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ result: resultText });
+    // Post-processing cleanup to filter out leftover thinking headers if present
+    const cleanedText = resultText
+      .replace(/^[\s\S]*?(?:Hello!|Dear|Here is|Sure|Executive Summary|Key Action Items)/i, (match) => {
+        if (match.includes("* User says:") || match.includes("* Role:")) {
+          return match.split("\n").pop() || "";
+        }
+        return match;
+      });
+
+    return NextResponse.json({ result: resultText.trim() });
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Internal Server Error" },
