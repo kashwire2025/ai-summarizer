@@ -1,10 +1,20 @@
-export const translations = {
+export const languagesList = [
+  "English", "Spanish", "French", "German", "Chinese", 
+  "Japanese", "Korean", "Portuguese", "Italian", "Russian", 
+  "Arabic", "Hindi", "Bengali", "Turkish", "Dutch", 
+  "Polish", "Swedish", "Indonesian", "Vietnamese", "Thai", 
+  "Greek", "Hebrew", "Czech", "Hungarian", "Romanian"
+];
+
+export const translations: Record<string, Record<string, string>> = {
   English: {
     title: "AI Document Workbench",
     signIn: "Sign in with Google",
     uploadLabel: "Upload Context Document / Image",
     chooseFile: "Choose File",
     noFile: "No file chosen",
+    inputTextLabel: "Paste Document Text or Prompt",
+    placeholder: "Paste document text or type your context here...",
     execSummary: "Executive Summary",
     actionItems: "Key Action Items",
     takeaways: "Top Takeaways",
@@ -17,6 +27,8 @@ export const translations = {
     uploadLabel: "Cargar documento de contexto / Imagen",
     chooseFile: "Seleccionar archivo",
     noFile: "Ningún archivo seleccionado",
+    inputTextLabel: "Pegar texto del documento o prompt",
+    placeholder: "Pega el texto del documento o escribe tu contexto aquí...",
     execSummary: "Resumen Ejecutivo",
     actionItems: "Puntos de Acción Clave",
     takeaways: "Conclusiones Principales",
@@ -29,10 +41,40 @@ export const translations = {
     uploadLabel: "Carregar Documento de Contexto / Imagem",
     chooseFile: "Escolher Arquivo",
     noFile: "Nenhum arquivo escolhido",
+    inputTextLabel: "Colar Texto do Documento ou Prompt",
+    placeholder: "Cole o texto do documento ou digite seu contexto aqui...",
     execSummary: "Resumo Executivo",
     actionItems: "Principais Itens de Ação",
     takeaways: "Principais Conclusões",
     analyzeTrends: "Analisar Tendências e Dados",
-    download: "Baixar Archivo (.md)",
+    download: "Baixar Arquivo (.md)",
   },
+  French: {
+    title: "Espace de Travail Documentaire IA",
+    signIn: "Se connecter avec Google",
+    uploadLabel: "Télécharger un document / Une image",
+    chooseFile: "Choisir un fichier",
+    noFile: "Aucun fichier choisi",
+    inputTextLabel: "Coller le texte du document ou l'invite",
+    placeholder: "Collez le texte du document ou saisissez votre contexte ici...",
+    execSummary: "Résumé Exécutif",
+    actionItems: "Actions Clés",
+    takeaways: "Points Essentiels",
+    analyzeTrends: "Analyser Tendances & Données",
+    download: "Télécharger (.md)",
+  },
+  German: {
+    title: "KI-Dokumenten-Arbeitsbereich",
+    signIn: "Mit Google anmelden",
+    uploadLabel: "Kontextdokument / Bild hochladen",
+    chooseFile: "Datei auswählen",
+    noFile: "Keine Datei ausgewählt",
+    inputTextLabel: "Dokumenttext oder Prompt einfügen",
+    placeholder: "Fügen Sie hier den Dokumenttext oder Ihren Kontext ein...",
+    execSummary: "Executive Summary",
+    actionItems: "Wichtige Maßnahmen",
+    takeaways: "Wichtigste Erkenntnisse",
+    analyzeTrends: "Trends & Daten analysieren",
+    download: "Datei herunterladen (.md)",
+  }
 };
