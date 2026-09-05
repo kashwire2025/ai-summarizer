@@ -21,8 +21,7 @@ CRITICAL MANDATE: You MUST provide your entire output strictly in ${targetLangua
 Do not write in English unless ${targetLanguage} is English.
 Perform the following analysis task: ${action || "execSummary"}.`;
 
-    // Verified model identifiers for Google AI Studio API
-    const models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"];
+    const models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash-exp"];
     let lastError = null;
 
     for (const model of models) {
