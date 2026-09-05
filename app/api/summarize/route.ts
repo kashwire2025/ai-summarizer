@@ -25,12 +25,38 @@ export async function POST(req: Request) {
       userPrompt = `Analyze key trends and data points in the following text:\n\n${prompt}`;
     }
 
-    // Standard list of active models sorted by priority
-    const candidates = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
+    // 1. Dynamically fetch models supported by this specific API key
+    let modelsToTry: string[] = [];
+    try {
+      const listRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      );
+      const listData = await listRes.json();
+
+      if (listData.models && Array.isArray(listData.models)) {
+        modelsToTry = listData.models
+          .filter((m: any) => 
+            m.supportedGenerationMethods?.includes("generateContent") &&
+            !m.name.includes("embedding") &&
+            !m.name.includes("imagen") &&
+            !m.name.includes("aqa")
+          )
+          .map((m: any) => m.name.replace("models/", ""));
+      }
+    } catch (e) {
+      console.error("Failed to fetch model list dynamic fallback:", e);
+    }
+
+    // Fallback if ListModels endpoint fails or is restricted
+    if (modelsToTry.length === 0) {
+      modelsToTry = ["gemini-2.0-flash", "gemini-2.0-flash-lite"];
+    }
+
     let resultText = "";
     let lastError = "";
 
-    for (const modelName of candidates) {
+    // 2. Iterate through discoverable supported models
+    for (const modelName of modelsToTry) {
       try {
         const res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
@@ -47,9 +73,9 @@ export async function POST(req: Request) {
 
         if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
           resultText = data.candidates[0].content.parts[0].text;
-          break; // Success! Exit loop.
+          break; // Success!
         } else {
-          lastError = data.error?.message || `Model ${modelName} returned status ${res.status}`;
+          lastError = data.error?.message || `Model ${modelName} HTTP status ${res.status}`;
         }
       } catch (err: any) {
         lastError = err.message || "Network request failed.";
