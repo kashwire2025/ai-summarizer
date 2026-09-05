@@ -83,6 +83,7 @@ export default function Home() {
     if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
       try {
         const fileData = await file.arrayBuffer();
+        // @ts-ignore
         const pdfjsLib = await import("pdfjs-dist/build/pdf.mjs");
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
