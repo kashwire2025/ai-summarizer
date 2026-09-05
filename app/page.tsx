@@ -4,10 +4,6 @@ import { useState } from "react";
 import { translations, languagesList } from "@/lib/translations";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 export default function Home() {
   const [selectedLanguage, setSelectedLanguage] = useState("English");
   const [inputText, setInputText] = useState("");
@@ -17,10 +13,14 @@ export default function Home() {
   const t = translations[selectedLanguage] || translations["English"];
 
   const handleGoogleSignIn = async () => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder";
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}`,
+        redirectTo: typeof window !== "undefined" ? window.location.origin : "",
       },
     });
   };
