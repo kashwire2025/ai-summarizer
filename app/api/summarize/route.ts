@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { prompt, action, language } = await req.json();
+    const { prompt, action, language, fileText } = await req.json();
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -12,22 +12,34 @@ export async function POST(req: Request) {
       );
     }
 
-    // Strict system instruction preventing thought logs/scratchpads
-    const systemInstruction = `You are a concise, professional AI content assistant. Output ONLY your final response. Do NOT include internal reasoning, thinking steps, options analysis, or metadata breakdown. Respond directly in ${language || "English"}.`;
-
-    let userPrompt = prompt;
-
-    if (action === "execSummary") {
-      userPrompt = `Provide a thorough executive summary of the following text:\n\n${prompt}`;
-    } else if (action === "actionItems") {
-      userPrompt = `Extract clear, bulleted key action items from the following text:\n\n${prompt}`;
-    } else if (action === "takeaways") {
-      userPrompt = `Extract top strategic takeaways from the following text:\n\n${prompt}`;
-    } else if (action === "analyzeTrends") {
-      userPrompt = `Analyze key trends and data points in the following text:\n\n${prompt}`;
+    // Combine uploaded document content with user prompt text
+    let contextContent = "";
+    if (fileText && fileText.trim().length > 0) {
+      contextContent += `[UPLOADED DOCUMENT CONTENT]:\n${fileText.trim()}\n\n`;
+    }
+    if (prompt && prompt.trim().length > 0) {
+      contextContent += `[USER PROMPT / INSTRUCTION]:\n${prompt.trim()}`;
     }
 
-    // Dynamic model discovery endpoint
+    if (!contextContent) {
+      return NextResponse.json(
+        { error: "Please provide text input or upload a document to process." },
+        { status: 400 }
+      );
+    }
+
+    let taskInstruction = "Summarize the provided content clearly.";
+    if (action === "execSummary") {
+      taskInstruction = "Provide a thorough executive summary covering key objectives, findings, and results.";
+    } else if (action === "actionItems") {
+      taskInstruction = "Extract clear, bulleted key action items with responsibilities where available.";
+    } else if (action === "takeaways") {
+      taskInstruction = "Extract top strategic takeaways and core insights.";
+    } else if (action === "analyzeTrends") {
+      taskInstruction = "Analyze key trends, patterns, and data points present in the text.";
+    }
+
+    // Dynamic model lookup
     let modelsToTry: string[] = [];
     try {
       const listRes = await fetch(
@@ -40,13 +52,12 @@ export async function POST(req: Request) {
           .filter((m: any) => 
             m.supportedGenerationMethods?.includes("generateContent") &&
             !m.name.includes("embedding") &&
-            !m.name.includes("imagen") &&
-            !m.name.includes("aqa")
+            !m.name.includes("imagen")
           )
           .map((m: any) => m.name.replace("models/", ""));
       }
     } catch (e) {
-      console.error("Failed to fetch model list:", e);
+      console.error("Model discovery error:", e);
     }
 
     if (modelsToTry.length === 0) {
@@ -64,7 +75,14 @@ export async function POST(req: Request) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: `${systemInstruction}\n\n${userPrompt}` }] }]
+              system_instruction: {
+                parts: [{ 
+                  text: `You are a professional AI document processing assistant. You must ONLY output the final summary result in ${language || "English"}. Never include internal reasoning, chain-of-thought, or analysis logs in your response.` 
+                }]
+              },
+              contents: [{
+                parts: [{ text: `${taskInstruction}\n\n${contextContent}` }]
+              }]
             }),
           }
         );
@@ -75,7 +93,7 @@ export async function POST(req: Request) {
           resultText = data.candidates[0].content.parts[0].text;
           break;
         } else {
-          lastError = data.error?.message || `HTTP status ${res.status}`;
+          lastError = data.error?.message || `HTTP ${res.status}`;
         }
       } catch (err: any) {
         lastError = err.message || "Network request failed.";
@@ -84,19 +102,10 @@ export async function POST(req: Request) {
 
     if (!resultText) {
       return NextResponse.json(
-        { error: `API Execution Failed: ${lastError}` },
+        { error: `API Processing Failed: ${lastError}` },
         { status: 500 }
       );
     }
-
-    // Post-processing cleanup to filter out leftover thinking headers if present
-    const cleanedText = resultText
-      .replace(/^[\s\S]*?(?:Hello!|Dear|Here is|Sure|Executive Summary|Key Action Items)/i, (match) => {
-        if (match.includes("* User says:") || match.includes("* Role:")) {
-          return match.split("\n").pop() || "";
-        }
-        return match;
-      });
 
     return NextResponse.json({ result: resultText.trim() });
   } catch (err: any) {
