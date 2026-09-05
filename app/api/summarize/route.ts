@@ -25,8 +25,8 @@ export async function POST(req: Request) {
       userPrompt = `Analyze key trends and data points in the following text:\n\n${prompt}`;
     }
 
-    // Modern active model fallback array
-    const modelsToTry = ["gemini-2.0-flash", "gemini-2.5-flash"];
+    // 3-Model Fallback Chain
+    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
     let resultText = "";
     let lastError = "";
 
