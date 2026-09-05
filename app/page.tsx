@@ -13,6 +13,13 @@ export default function Home() {
   const [downloadFormat, setDownloadFormat] = useState("md");
   const [user, setUser] = useState<any>(null);
 
+  // Auth Modal State
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+
   const t = translations[selectedLanguage] || translations["English"];
 
   const getSupabase = () => {
@@ -37,6 +44,36 @@ export default function Home() {
     };
   }, []);
 
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthMessage("");
+    const supabase = getSupabase();
+
+    if (isSignUp) {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        setAuthMessage(error.message);
+      } else {
+        setAuthMessage("Account created! Check your email or sign in directly.");
+      }
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setAuthMessage(error.message);
+      } else {
+        setShowAuthModal(false);
+        setEmail("");
+        setPassword("");
+      }
+    }
+  };
+
+  const handleSignOut = async () => {
+    const supabase = getSupabase();
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -46,7 +83,6 @@ export default function Home() {
     if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
       try {
         const fileData = await file.arrayBuffer();
-        // Dynamically load pdfjs build without triggering Node server bundle
         const pdfjsLib = await import("pdfjs-dist/build/pdf.mjs");
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
@@ -63,7 +99,7 @@ export default function Home() {
 
         setInputText(extractedText.trim());
       } catch (err) {
-        setOutput("Error reading PDF file. Try converting or pasting text directly.");
+        setOutput("Error reading PDF file. Try pasting text directly.");
       }
     } else {
       const reader = new FileReader();
@@ -73,22 +109,6 @@ export default function Home() {
       };
       reader.readAsText(file);
     }
-  };
-
-  const handleGoogleSignIn = async () => {
-    const supabase = getSupabase();
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: typeof window !== "undefined" ? window.location.origin : "",
-      },
-    });
-  };
-
-  const handleSignOut = async () => {
-    const supabase = getSupabase();
-    await supabase.auth.signOut();
-    setUser(null);
   };
 
   const handleDownload = () => {
@@ -160,7 +180,7 @@ export default function Home() {
               </button>
             ) : (
               <button 
-                onClick={handleGoogleSignIn}
+                onClick={() => setShowAuthModal(true)}
                 className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition"
               >
                 {t.signIn}
@@ -168,6 +188,75 @@ export default function Home() {
             )}
           </div>
         </div>
+
+        {/* Auth Modal */}
+        {showAuthModal && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+            <div className="bg-[#131c31] p-6 rounded-xl border border-gray-800 w-full max-w-md space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-lg font-bold text-blue-400">
+                  {isSignUp ? "Create Account" : "Sign In"}
+                </h2>
+                <button 
+                  onClick={() => setShowAuthModal(false)}
+                  className="text-gray-400 hover:text-white text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleAuth} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full bg-[#1b2744] text-white p-2.5 rounded-lg border border-gray-700 text-sm focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-[#1b2744] text-white p-2.5 rounded-lg border border-gray-700 text-sm focus:outline-none"
+                  />
+                </div>
+
+                {authMessage && (
+                  <p className="text-xs text-blue-400 leading-relaxed">{authMessage}</p>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-semibold transition"
+                >
+                  {isSignUp ? "Sign Up" : "Sign In"}
+                </button>
+              </form>
+
+              <div className="text-center text-xs text-gray-400 pt-2 border-t border-gray-800">
+                {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setAuthMessage("");
+                  }}
+                  className="text-blue-400 hover:underline font-medium"
+                >
+                  {isSignUp ? "Sign In" : "Sign Up"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Upload Box */}
         <div className="bg-[#131c31] p-5 rounded-xl border border-gray-800 space-y-2">
