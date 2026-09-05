@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { translations, languagesList } from "@/lib/translations";
 import { createClient } from "@supabase/supabase-js";
+import * as pdfjsLib from "pdfjs-dist";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 export default function Home() {
   const [selectedLanguage, setSelectedLanguage] = useState("English");
@@ -10,13 +13,59 @@ export default function Home() {
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState("");
+  const [downloadFormat, setDownloadFormat] = useState("md");
+  const [user, setUser] = useState<any>(null);
 
   const t = translations[selectedLanguage] || translations["English"];
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const getSupabase = () => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder";
+    return createClient(supabaseUrl, supabaseAnonKey);
+  };
+
+  useEffect(() => {
+    const supabase = getSupabase();
+    
+    // Check initial auth state
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) setUser(data.user);
+    });
+
+    // Listen to OAuth login redirect callback
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setFileName(file.name);
+    if (!file) return;
+
+    setFileName(file.name);
+
+    if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let extractedText = "";
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const pageText = content.items.map((item: any) => item.str).join(" ");
+          extractedText += `\n--- Page ${i} ---\n` + pageText;
+        }
+
+        setInputText(extractedText.trim());
+      } catch (err) {
+        setOutput("Error parsing PDF file.");
+      }
+    } else {
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target?.result as string;
@@ -27,10 +76,7 @@ export default function Home() {
   };
 
   const handleGoogleSignIn = async () => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder";
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+    const supabase = getSupabase();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -39,9 +85,26 @@ export default function Home() {
     });
   };
 
+  const handleSignOut = async () => {
+    const supabase = getSupabase();
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  const handleDownload = () => {
+    if (!output) return;
+    const blob = new Blob([output], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `summary.${downloadFormat}`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleAction = async (actionType: string) => {
     if (!inputText.trim()) {
-      setOutput("Please enter document text or type a prompt first.");
+      setOutput("Please enter document text, upload a file, or type a prompt first.");
       return;
     }
 
@@ -88,12 +151,21 @@ export default function Home() {
                 <option key={lang} value={lang}>🌐 {lang}</option>
               ))}
             </select>
-            <button 
-              onClick={handleGoogleSignIn}
-              className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition"
-            >
-              {t.signIn}
-            </button>
+            {user ? (
+              <button 
+                onClick={handleSignOut}
+                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-medium transition"
+              >
+                Sign Out ({user.email?.slice(0, 10)}...)
+              </button>
+            ) : (
+              <button 
+                onClick={handleGoogleSignIn}
+                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition"
+              >
+                {t.signIn}
+              </button>
+            )}
           </div>
         </div>
 
@@ -103,7 +175,12 @@ export default function Home() {
           <div className="flex items-center gap-3 bg-[#1b2744] p-2 rounded-lg border border-gray-700">
             <label className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm cursor-pointer font-medium">
               {t.chooseFile}
-              <input type="file" accept=".txt,.md,.csv,.json" onChange={handleFileUpload} className="hidden" />
+              <input 
+                type="file" 
+                accept=".txt,.md,.csv,.json,.pdf" 
+                onChange={handleFileUpload} 
+                className="hidden" 
+              />
             </label>
             <span className="text-sm text-gray-400">{fileName || t.noFile}</span>
           </div>
@@ -137,10 +214,25 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Download Action */}
-        <button className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-          📥 {t.download}
-        </button>
+        {/* Export / Download Bar */}
+        <div className="flex items-center gap-3">
+          <select
+            value={downloadFormat}
+            onChange={(e) => setDownloadFormat(e.target.value)}
+            className="bg-[#1b2744] text-white px-3 py-2 rounded-lg border border-gray-700 text-sm focus:outline-none"
+          >
+            <option value="md">Markdown (.md)</option>
+            <option value="txt">Plain Text (.txt)</option>
+            <option value="pdf">Document (.pdf)</option>
+          </select>
+          <button 
+            onClick={handleDownload}
+            disabled={!output}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+          >
+            📥 Download File (.{downloadFormat})
+          </button>
+        </div>
 
         {/* AI Output Box */}
         <div className="bg-[#131c31] p-6 rounded-xl border border-gray-800 min-h-[220px]">
@@ -153,15 +245,15 @@ export default function Home() {
           )}
         </div>
 
-        {/* Bottom Input Chat Box with Send Button */}
+        {/* Bottom Input Chat Box */}
         <div className="bg-[#131c31] p-4 rounded-xl border border-gray-800 space-y-3">
           <label className="block text-sm font-medium text-gray-300">{t.inputTextLabel}</label>
           <textarea
-            rows={3}
+            rows={4}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder={t.placeholder}
-            className="w-full bg-[#1b2744] text-gray-100 p-3 rounded-lg border border-gray-700 focus:outline-none focus:border-blue-500 text-sm"
+            className="w-full bg-[#1b2744] text-gray-100 p-3 rounded-lg border border-gray-700 focus:outline-none focus:border-blue-500 text-sm font-mono"
           />
           <div className="flex justify-end">
             <button
