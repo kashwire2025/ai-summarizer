@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   try {
     const { prompt, text, action, language } = await req.json();
@@ -21,7 +23,8 @@ CRITICAL MANDATE: You MUST provide your entire output strictly in ${targetLangua
 Do not write in English unless ${targetLanguage} is English.
 Perform the following analysis task: ${action || "execSummary"}.`;
 
-    const models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash-exp"];
+    // Active Gemini endpoints
+    const models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash"];
     let lastError = null;
 
     for (const model of models) {
@@ -55,7 +58,7 @@ Perform the following analysis task: ${action || "execSummary"}.`;
       }
     }
 
-    return NextResponse.json({ error: `All 3 models failed. Last error: ${lastError}` }, { status: 500 });
+    return NextResponse.json({ error: `All models failed. Last error: ${lastError}` }, { status: 500 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Internal server error." }, { status: 500 });
   }
