@@ -46,7 +46,7 @@ export default function Home() {
       <div className="bg-[#131b2e] border border-slate-800 rounded-xl p-4 flex justify-between items-center">
         <h1 className="text-xl font-bold text-white">{t.title}</h1>
         <button className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-4 py-2 rounded-lg transition-colors">
-          {t.signIn}
+          <a href="/login">{t.signIn}</a>
         </button>
       </div>
 
