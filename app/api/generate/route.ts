@@ -1,61 +1,50 @@
-import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { NextResponse } from "next/server";
 
-// Active models ordered by speed and fallback capability
-const MODELS = [
-  'gemini-3.7-flash',
-  'gemini-3.5-flash-lite',
-  'gemini-3.1-pro-preview'
+const FALLBACK_MODELS = [
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+  "gemini-1.5-flash-8b"
 ];
 
 export async function POST(req: Request) {
   try {
-    const { prompt, language = 'English' } = await req.json();
-
+    const { prompt, text } = await req.json();
+    const inputContent = prompt || text;
     const apiKey = process.env.GEMINI_API_KEY;
+
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'GEMINI_API_KEY is missing in Vercel environment variables.' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Missing API key" }, { status: 500 });
+    }
+
+    if (!inputContent) {
+      return NextResponse.json({ error: "Prompt or text is required" }, { status: 400 });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const systemPrompt = `You are an AI Document Workbench assistant. Respond strictly in ${language}.\n\nUser request: ${prompt}`;
+    let lastError: any = null;
 
-    let responseText = null;
-    let lastError = null;
-
-    for (const modelName of MODELS) {
+    for (const modelName of FALLBACK_MODELS) {
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(systemPrompt);
-        responseText = result.response.text();
-        
-        if (responseText) {
-          console.log(`Successfully generated using: ${modelName}`);
-          break;
-        }
+        const result = await model.generateContent(inputContent);
+        const output = result.response.text();
+
+        return NextResponse.json({ 
+          result: output, 
+          modelUsed: modelName 
+        });
       } catch (err: any) {
-        console.warn(`Model ${modelName} failed, trying next fallback:`, err.message);
+        console.warn(`Model ${modelName} failed in /api/generate (${err?.message}). Switching to fallback...`);
         lastError = err;
       }
     }
 
-    if (responseText) {
-      return NextResponse.json({ text: responseText });
-    }
-
     return NextResponse.json(
-      { error: lastError?.message || 'All AI models failed to respond.' },
+      { error: `All model fallbacks failed. Last error: ${lastError?.message}` },
       { status: 500 }
     );
-
   } catch (error: any) {
-    console.error('API Error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to process request.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
