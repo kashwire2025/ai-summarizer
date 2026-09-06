@@ -3,17 +3,24 @@ import { NextResponse } from "next/server";
 
 const FALLBACK_MODELS = [
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b"
+  "gemini-1.5-flash"
 ];
 
 export async function POST(req: Request) {
   try {
-    const { text } = await req.json();
-    const apiKey = process.env.GEMINI_API_KEY;
+    const body = await req.json();
+    const textToSummarize = body.text || body.prompt || body.content || body.document;
 
+    if (!textToSummarize || typeof textToSummarize !== "string" || !textToSummarize.trim()) {
+      return NextResponse.json(
+        { error: "No document text provided. Please enter text to summarize." },
+        { status: 400 }
+      );
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "Missing API key" }, { status: 500 });
+      return NextResponse.json({ error: "Missing API key in environment variables" }, { status: 500 });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -26,11 +33,12 @@ export async function POST(req: Request) {
           systemInstruction: "You are a precise document summarizer. Output only the requested summary without internal reasoning logs."
         });
 
-        const result = await model.generateContent(text);
+        const result = await model.generateContent(textToSummarize.trim());
         const summary = result.response.text();
 
         return NextResponse.json({ 
           summary, 
+          result: summary,
           modelUsed: modelName 
         });
 
