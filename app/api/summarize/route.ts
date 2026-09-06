@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { prompt, action, language, fileText } = await req.json();
+    const { prompt, action, language = "English", fileText } = await req.json();
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -12,7 +12,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Combine uploaded document content with user prompt text
     let contextContent = "";
     if (fileText && fileText.trim().length > 0) {
       contextContent += `[UPLOADED DOCUMENT CONTENT]:\n${fileText.trim()}\n\n`;
@@ -23,46 +22,37 @@ export async function POST(req: Request) {
 
     if (!contextContent) {
       return NextResponse.json(
-        { error: "Please provide text input or upload a document to process." },
+        { error: "Please provide text input or upload a document." },
         { status: 400 }
       );
     }
 
     let taskInstruction = "Summarize the provided content clearly.";
     if (action === "execSummary") {
-      taskInstruction = "Provide a thorough executive summary covering key objectives, findings, and results.";
+      taskInstruction = "Provide a thorough executive summary highlighting core points.";
     } else if (action === "actionItems") {
-      taskInstruction = "Extract clear, bulleted key action items with responsibilities where available.";
+      taskInstruction = "Extract clear, bulleted key action items and next steps.";
     } else if (action === "takeaways") {
-      taskInstruction = "Extract top strategic takeaways and core insights.";
+      taskInstruction = "Extract top strategic takeaways and key insights.";
     } else if (action === "analyzeTrends") {
-      taskInstruction = "Analyze key trends, patterns, and data points present in the text.";
+      taskInstruction = "Analyze key trends, patterns, and critical observations.";
     }
 
-    // Dynamic model lookup
-    let modelsToTry: string[] = [];
-    try {
-      const listRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
-      );
-      const listData = await listRes.json();
+    const systemPrompt = `You are an expert AI summarization assistant.
+Task: ${taskInstruction}
+Target Output Language: ${language}
 
-      if (listData.models && Array.isArray(listData.models)) {
-        modelsToTry = listData.models
-          .filter((m: any) => 
-            m.supportedGenerationMethods?.includes("generateContent") &&
-            !m.name.includes("embedding") &&
-            !m.name.includes("imagen")
-          )
-          .map((m: any) => m.name.replace("models/", ""));
-      }
-    } catch (e) {
-      console.error("Model discovery error:", e);
-    }
+STRICT OUTPUT CONSTRAINTS:
+- You must ONLY output the final result in ${language}.
+- NEVER include internal reasoning, chain-of-thought, prompt reflections, constraint checklists, or analysis logs.
+- Do NOT print meta headers like "* Task:", "* Constraint:", or "* Refined Result:".
+- Output direct, clean markdown formatted text addressing the prompt immediately.`;
 
-    if (modelsToTry.length === 0) {
-      modelsToTry = ["gemini-2.0-flash", "gemini-2.0-flash-lite"];
-    }
+    const modelsToTry = [
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-1.5-pro",
+    ];
 
     let resultText = "";
     let lastError = "";
@@ -76,38 +66,43 @@ export async function POST(req: Request) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               system_instruction: {
-                parts: [{ 
-                  text: `You are a professional AI document processing assistant. You must ONLY output the final summary result in ${language || "English"}. Never include internal reasoning, chain-of-thought, or analysis logs in your response.` 
-                }]
+                parts: [{ text: systemPrompt }],
               },
-              contents: [{
-                parts: [{ text: `${taskInstruction}\n\n${contextContent}` }]
-              }]
+              contents: [
+                {
+                  parts: [{ text: contextContent }],
+                },
+              ],
             }),
           }
         );
 
-        const data = await res.json();
-
-        if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          resultText = data.candidates[0].content.parts[0].text;
-          break;
-        } else {
-          lastError = data.error?.message || `HTTP ${res.status}`;
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          lastError = errData.error?.message || `HTTP ${res.status}`;
+          continue;
         }
-      } catch (err: any) {
-        lastError = err.message || "Network request failed.";
+
+        const data = await res.json();
+        const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (candidateText) {
+          resultText = candidateText;
+          break;
+        }
+      } catch (e: any) {
+        lastError = e.message || "Fetch request failed";
       }
     }
 
     if (!resultText) {
       return NextResponse.json(
-        { error: `API Processing Failed: ${lastError}` },
+        { error: `Gemini API Error: ${lastError || "No response generated."}` },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ result: resultText.trim() });
+    return NextResponse.json({ result: resultText });
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Internal Server Error" },
