@@ -1,15 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LANGUAGES, getTranslation } from "@/lib/translations";
+import { supabase } from "@/lib/supabase";
+import { User } from "@supabase/supabase-js";
 
 export default function Home() {
   const [language, setLanguage] = useState("en");
   const [inputText, setInputText] = useState("");
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   const t = getTranslation(language);
+
+  // Sync Supabase Auth session state
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   const handleAction = async (promptType: string) => {
     if (!inputText.trim() || loading) return;
@@ -45,9 +66,26 @@ export default function Home() {
       {/* Top Header */}
       <div className="bg-[#131b2e] border border-slate-800 rounded-xl p-4 flex justify-between items-center">
         <h1 className="text-xl font-bold text-white">{t.title}</h1>
-        <button className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-4 py-2 rounded-lg transition-colors">
-          <a href="/login">{t.signIn}</a>
-        </button>
+        {user ? (
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-400 font-medium truncate max-w-[120px]">
+              {user.email}
+            </span>
+            <button
+              onClick={handleSignOut}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <a
+            href="/login"
+            className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-4 py-2 rounded-lg transition-colors"
+          >
+            {t.signIn}
+          </a>
+        )}
       </div>
 
       {/* Language & Theme Selectors */}
