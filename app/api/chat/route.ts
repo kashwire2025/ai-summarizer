@@ -1,10 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-// Standard supported Gemini model identifiers
 const FALLBACK_MODELS = [
-  "gemini-2.0-flash",
-  "gemini-1.5-flash"
+  "gemini-3.6-flash",
+  "gemini-2.5-flash"
 ];
 
 export async function POST(req: Request) {
@@ -22,7 +21,6 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Format history into Google Generative AI expected structure
     const formattedHistory = (history || []).map((msg: { role: string; content: string }) => ({
       role: msg.role === "user" ? "user" : "model",
       parts: [{ text: msg.content }]
@@ -55,7 +53,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Return detailed breakdown if all candidates fail
     return NextResponse.json(
       { 
         error: "All model fallbacks failed.", 
