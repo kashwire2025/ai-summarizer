@@ -1,33 +1,34 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
+// Standard supported Gemini model identifiers
 const FALLBACK_MODELS = [
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b"
+  "gemini-1.5-flash"
 ];
 
 export async function POST(req: Request) {
   try {
     const { history, message } = await req.json();
 
-    if (!message || typeof message !== "string") {
+    if (!message || typeof message !== "string" || !message.trim()) {
       return NextResponse.json({ error: "Message is required." }, { status: 400 });
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "Missing API Key" }, { status: 500 });
+      return NextResponse.json({ error: "Missing API Key in environment variables" }, { status: 500 });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
+    // Format history into Google Generative AI expected structure
     const formattedHistory = (history || []).map((msg: { role: string; content: string }) => ({
       role: msg.role === "user" ? "user" : "model",
       parts: [{ text: msg.content }]
     }));
 
-    let lastError: any = null;
+    const attemptErrors: { model: string; error: string }[] = [];
 
     for (const modelName of FALLBACK_MODELS) {
       try {
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
           history: formattedHistory
         });
 
-        const result = await chat.sendMessage(message);
+        const result = await chat.sendMessage(message.trim());
         const responseText = result.response.text();
 
         return NextResponse.json({
@@ -49,13 +50,17 @@ export async function POST(req: Request) {
         });
 
       } catch (err: any) {
-        console.warn(`Chat failed on ${modelName}: ${err?.message}`);
-        lastError = err;
+        console.warn(`Chat failed on model ${modelName}:`, err?.message);
+        attemptErrors.push({ model: modelName, error: err?.message || String(err) });
       }
     }
 
+    // Return detailed breakdown if all candidates fail
     return NextResponse.json(
-      { error: `All model fallbacks failed: ${lastError?.message}` },
+      { 
+        error: "All model fallbacks failed.", 
+        details: attemptErrors 
+      },
       { status: 500 }
     );
 
