@@ -1,13 +1,25 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const apiKey = process.env.GEMINI_API_KEY || "";
+const genAI = new GoogleGenerativeAI(apiKey);
 
 export async function POST(req: Request) {
   try {
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "GEMINI_API_KEY is missing in Vercel Environment Variables." },
+        { status: 500 }
+      );
+    }
+
     const { text, fileData, promptType, language } = await req.json();
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Explicitly target the stable v1 API version to fix 404 routing errors
+    const model = genAI.getGenerativeModel(
+      { model: "gemini-1.5-flash" },
+      { apiVersion: "v1" }
+    );
 
     const systemInstruction = `You are an interactive AI web assistant and document analyzer. 
 Answer questions, follow instructions, engage in natural conversation, and analyze uploaded content.
