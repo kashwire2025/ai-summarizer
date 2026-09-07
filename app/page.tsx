@@ -1,40 +1,51 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { LANGUAGES, getTranslation } from "@/lib/translations";
-import { supabase } from "@/lib/supabase";
-import { User } from "@supabase/supabase-js";
+import { useState, useRef } from "react";
 
 export default function Home() {
-  const [language, setLanguage] = useState("en");
   const [inputText, setInputText] = useState("");
-  const [response, setResponse] = useState("");
+  const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [promptType, setPromptType] = useState("General Chat");
+  const [fileData, setFileData] = useState<any>(null);
+  const [fileName, setFileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const t = getTranslation(language);
+  // Parse TXT/MD directly or convert PDF/DOC/Images to Base64
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
+    setFileName(file.name);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    if (file.type.startsWith("text/") || file.name.endsWith(".txt") || file.name.endsWith(".md")) {
+      const text = await file.text();
+      setInputText(text);
+      setFileData(null);
+      return;
+    }
 
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64String = (reader.result as string).split(",")[1];
+      setFileData({
+        inlineData: {
+          data: base64String,
+          mimeType: file.type || "application/pdf",
+        },
+      });
+      if (!inputText) {
+        setInputText(`[Attached File: ${file.name}]`);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleAction = async (promptType: string) => {
-    if (!inputText.trim() || loading) return;
+  const handleGenerate = async (type?: string) => {
+    const activePromptType = type || promptType;
+    setPromptType(activePromptType);
     setLoading(true);
-    setResponse("");
+    setOutput("Processing request...");
 
     try {
       const res = await fetch("/api/summarize", {
@@ -42,297 +53,185 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: inputText,
-          promptType,
-          language: LANGUAGES.find((l) => l.code === language)?.name || "English",
+          fileData: fileData,
+          promptType: activePromptType,
         }),
       });
 
       const data = await res.json();
-      if (res.ok) {
-        setResponse(data.summary || data.result);
+      if (data.error) {
+        setOutput(`Error: ${data.error}`);
       } else {
-        setResponse(`Error: ${data.error || "Failed to generate output."}`);
+        setOutput(data.summary || "No response generated.");
       }
     } catch (err: any) {
-      setResponse(`Network Error: ${err.message}`);
+      setOutput(`Error: ${err.message || "Failed to reach AI service"}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const downloadFile = (format: "txt" | "md" | "doc") => {
-    if (!response) return;
+  // Helper to export highlighted text or full output
+  const getExportContent = () => {
+    const selection = window.getSelection()?.toString().trim();
+    return selection && selection.length > 0 ? selection : output;
+  };
 
-    let mimeType = "text/plain";
-    let extension = format;
-    let content = response;
-
-    if (format === "md") {
-      mimeType = "text/markdown";
-    } else if (format === "doc") {
-      mimeType = "application/msword";
-      content = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head><title>Summary Export</title></head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h2>AI Summary Export</h2>
-          <p>${response.replace(/\n/g, "<br/>")}</p>
-        </body>
-        </html>
-      `;
-    }
-
-    const blob = new Blob([content], { type: mimeType });
+  const downloadTxt = () => {
+    const content = getExportContent();
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `summary-${Date.now()}.${extension}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "export.txt";
+    a.click();
     URL.revokeObjectURL(url);
   };
 
-  const downloadImage = () => {
-    if (!response) return;
+  const downloadMd = () => {
+    const content = getExportContent();
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "export.md";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
+  const downloadDoc = () => {
+    const content = getExportContent();
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'></head><body>";
+    const footer = "</body></html>";
+    const sourceHTML = header + "<div>" + content.replace(/\n/g, "<br/>") + "</div>" + footer;
+    const blob = new Blob([sourceHTML], { type: "application/msword" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "export.doc";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadPng = () => {
+    const content = getExportContent();
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const width = 800;
-    const padding = 40;
-    const fontSize = 16;
-    const lineHeight = 24;
-
-    ctx.font = `${fontSize}px sans-serif`;
-
-    // Word wrap algorithm for Canvas
-    const paragraphs = response.split("\n");
-    const lines: string[] = [];
-
-    paragraphs.forEach((p) => {
-      if (!p.trim()) {
-        lines.push("");
-        return;
-      }
-      const words = p.split(" ");
-      let currentLine = "";
-
-      words.forEach((word) => {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        if (ctx.measureText(testLine).width > width - padding * 2) {
-          lines.push(currentLine);
-          currentLine = word;
-        } else {
-          currentLine = testLine;
-        }
-      });
-      if (currentLine) lines.push(currentLine);
-    });
-
-    const height = padding * 2 + lines.length * lineHeight + 60;
-    canvas.width = width;
-    canvas.height = Math.max(height, 300);
-
-    // Canvas styling: Dark theme canvas output
-    ctx.fillStyle = "#131b2e";
+    canvas.width = 800;
+    canvas.height = 600;
+    ctx.fillStyle = "#0f172a";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Top Header Banner
-    ctx.fillStyle = "#2563eb";
-    ctx.fillRect(0, 0, canvas.width, 8);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "16px sans-serif";
 
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "bold 14px sans-serif";
-    ctx.fillText("AI SUMMARY EXPORT", padding, padding);
-
-    // Render Text Lines
-    ctx.fillStyle = "#f8fafc";
-    ctx.font = `${fontSize}px sans-serif`;
-    lines.forEach((line, idx) => {
-      ctx.fillText(line, padding, padding + 35 + idx * lineHeight);
+    const lines = content.split("\n");
+    let y = 40;
+    lines.forEach((line) => {
+      if (y < 560) {
+        ctx.fillText(line.substring(0, 80), 30, y);
+        y += 24;
+      }
     });
 
-    // Download PNG
-    const link = document.createElement("a");
-    link.download = `summary-${Date.now()}.png`;
-    link.href = canvas.toDataURL("image/png");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "export.png";
+    a.click();
   };
 
   return (
-    <main className="min-h-screen bg-[#0b101d] text-slate-100 p-4 max-w-2xl mx-auto space-y-4">
-      {/* Top Header */}
-      <div className="bg-[#131b2e] border border-slate-800 rounded-xl p-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-white">{t.title}</h1>
-        {user ? (
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-400 font-medium truncate max-w-[120px]">
-              {user.email}
-            </span>
-            <button
-              onClick={handleSignOut}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
-            >
-              Sign Out
-            </button>
-          </div>
-        ) : (
-          <a
-            href="/login"
-            className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-4 py-2 rounded-lg transition-colors"
-          >
-            {t.signIn}
-          </a>
-        )}
+    <main className="min-h-screen bg-slate-950 text-white p-4 max-w-2xl mx-auto flex flex-col gap-4">
+      <h1 className="text-xl font-bold text-center my-2">AI Document Workbench</h1>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept=".txt,.md,.pdf,.doc,.docx,image/*"
+        className="hidden"
+      />
+
+      <div className="flex items-center gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          Choose File
+        </button>
+        <span className="text-xs text-slate-400 truncate">
+          {fileName || "No file chosen"}
+        </span>
       </div>
 
-      {/* Language & Theme Selectors */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-[#131b2e] border border-slate-800 rounded-xl p-3">
-          <label className="text-xs text-slate-400 block mb-1 font-medium">
-            {t.langLabel}
-          </label>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="w-full bg-[#0b101d] border border-slate-700 text-white rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500"
-          >
-            {LANGUAGES.map((lang) => (
-              <option key={lang.code} value={lang.code}>
-                {lang.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="bg-[#131b2e] border border-slate-800 rounded-xl p-3">
-          <label className="text-xs text-slate-400 block mb-2 font-medium">
-            {t.themeLabel}
-          </label>
-          <div className="flex gap-2">
-            <span className="w-6 h-6 rounded-full bg-blue-600 border-2 border-white inline-block cursor-pointer"></span>
-            <span className="w-6 h-6 rounded-full bg-white inline-block cursor-pointer"></span>
-          </div>
-        </div>
-      </div>
-
-      {/* Upload Box */}
-      <div className="bg-[#131b2e] border border-slate-800 rounded-xl p-4">
-        <span className="text-xs text-slate-400 block mb-2">{t.uploadLabel}</span>
-        <div className="border border-slate-800 bg-[#0b101d] p-2 rounded-lg flex items-center justify-between">
-          <button className="bg-blue-600 text-xs px-3 py-1.5 rounded text-white font-medium">
-            {t.chooseFile}
-          </button>
-          <span className="text-xs text-slate-500">{t.noFile}</span>
-        </div>
-      </div>
-
-      {/* Preset Action Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <button
-          onClick={() => handleAction("Executive Summary")}
-          className="bg-[#131b2e] hover:bg-slate-800 border border-slate-800 rounded-xl p-3 text-left flex items-center gap-2 transition-colors"
+          onClick={() => handleGenerate("Executive Summary")}
+          className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs font-semibold text-left hover:bg-slate-800"
         >
-          <span>📋</span>
-          <span className="text-xs font-semibold text-slate-200">{t.execSummary}</span>
+          📋 Executive Summary
         </button>
-
         <button
-          onClick={() => handleAction("Key Action Items")}
-          className="bg-[#131b2e] hover:bg-slate-800 border border-slate-800 rounded-xl p-3 text-left flex items-center gap-2 transition-colors"
+          onClick={() => handleGenerate("Key Action Items")}
+          className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs font-semibold text-left hover:bg-slate-800"
         >
-          <span>✅</span>
-          <span className="text-xs font-semibold text-slate-200">{t.keyActions}</span>
+          ✅ Key Action Items
         </button>
-
         <button
-          onClick={() => handleAction("Top Takeaways")}
-          className="bg-[#131b2e] hover:bg-slate-800 border border-slate-800 rounded-xl p-3 text-left flex items-center gap-2 transition-colors"
+          onClick={() => handleGenerate("Top Takeaways")}
+          className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs font-semibold text-left hover:bg-slate-800"
         >
-          <span>💡</span>
-          <span className="text-xs font-semibold text-slate-200">{t.topTakeaways}</span>
+          💡 Top Takeaways
         </button>
-
         <button
-          onClick={() => handleAction("Analyze Trends")}
-          className="bg-[#131b2e] hover:bg-slate-800 border border-slate-800 rounded-xl p-3 text-left flex items-center gap-2 transition-colors"
+          onClick={() => handleGenerate("Analyze Trends")}
+          className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs font-semibold text-left hover:bg-slate-800"
         >
-          <span>📊</span>
-          <span className="text-xs font-semibold text-slate-200">{t.analyzeTrends}</span>
+          📊 Analyze Trends
         </button>
       </div>
 
-      {/* Input Area */}
-      <div className="bg-[#131b2e] border border-slate-800 rounded-xl p-3">
+      <textarea
+        value={inputText}
+        onChange={(e) => setInputText(e.target.value)}
+        placeholder="Ask a question, chat naturally, or paste document text..."
+        className="w-full h-32 bg-slate-900 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 resize-none"
+      />
+
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+        <span className="text-xs font-semibold text-slate-400">Editable Output:</span>
         <textarea
-          rows={4}
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder={t.placeholder}
-          className="w-full bg-[#0b101d] border border-slate-800 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500 resize-none"
-        ></textarea>
+          value={output}
+          onChange={(e) => setOutput(e.target.value)}
+          placeholder="AI response will appear here..."
+          className="w-full h-40 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:outline-none resize-none font-mono text-slate-200"
+        />
+
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={downloadTxt} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700">
+            📥 Download .TXT
+          </button>
+          <button onClick={downloadMd} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700">
+            📥 Download .MD
+          </button>
+          <button onClick={downloadDoc} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700">
+            📥 Download .DOC
+          </button>
+          <button onClick={downloadPng} className="bg-blue-600 text-xs py-2 rounded-lg font-semibold hover:bg-blue-500">
+            🖼️ Download .PNG
+          </button>
+        </div>
       </div>
 
-      {/* Output / Response Block with Export Controls */}
-      {loading ? (
-        <div className="bg-[#131b2e] border border-slate-800 rounded-xl p-4 text-xs text-blue-400 animate-pulse">
-          {t.thinking}
-        </div>
-      ) : (
-        response && (
-          <div className="bg-[#131b2e] border border-slate-800 rounded-xl p-4 space-y-3">
-            <span className="text-xs text-slate-400 font-medium block">
-              {t.editNotice}
-            </span>
-            <textarea
-              rows={6}
-              value={response}
-              onChange={(e) => setResponse(e.target.value)}
-              className="w-full bg-[#0b101d] border border-slate-800 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500 resize-y"
-            ></textarea>
-            
-            {/* Download Buttons */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              <button
-                onClick={() => downloadFile("txt")}
-                className="bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
-              >
-                📥 {t.downloadTxt}
-              </button>
-              <button
-                onClick={() => downloadFile("md")}
-                className="bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
-              >
-                📥 {t.downloadMd}
-              </button>
-              <button
-                onClick={() => downloadFile("doc")}
-                className="bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
-              >
-                📥 {t.downloadDoc}
-              </button>
-              <button
-                onClick={downloadImage}
-                className="bg-blue-600 hover:bg-blue-500 text-xs text-white font-medium px-3 py-1.5 rounded-lg transition-colors"
-              >
-                🖼️ {t.downloadPng}
-              </button>
-            </div>
-          </div>
-        )
-      )}
-
-      {/* Primary Submit Button */}
       <button
-        onClick={() => handleAction("General Summary")}
-        disabled={loading || !inputText.trim()}
-        className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-medium py-3 rounded-xl text-sm transition-colors"
+        onClick={() => handleGenerate("General Chat")}
+        disabled={loading}
+        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-3 rounded-xl text-sm font-semibold transition"
       >
-        {t.summarizeBtn}
+        {loading ? "Processing..." : "Summarize Document / Chat"}
       </button>
     </main>
   );
