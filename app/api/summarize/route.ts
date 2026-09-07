@@ -1,15 +1,6 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.GEMINI_API_KEY || "";
-
-const MODEL_CANDIDATES = [
-  "gemini-2.5-flash",
-  "gemini-3.6-flash",
-  "gemini-1.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-pro",
-];
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +13,30 @@ export async function POST(req: Request) {
 
     const { text, history, fileData, promptType, language } = await req.json();
 
+    // 1. Query Google REST API directly to discover active models for this API key
+    let selectedModel = "gemini-1.5-flash"; // default fallback
+    try {
+      const listRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      );
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const validModels = (listData.models || [])
+          .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
+          .map((m: any) => m.name.replace(/^models\//, ""));
+
+        if (validModels.length > 0) {
+          // Prefer flash or pro model available to the key
+          selectedModel =
+            validModels.find((m: string) => m.includes("flash") || m.includes("pro")) ||
+            validModels[0];
+        }
+      }
+    } catch (err) {
+      console.warn("Model discovery fallback used");
+    }
+
+    // 2. Build system instructions and continuous chat context
     const systemInstruction = `You are an interactive conversational AI document analyzer and web workbench.
 You maintain continuous dialogue, answer follow-up queries, and analyze documents.
 CRITICAL MANDATE: Respond ENTIRELY in this language: "${language || 'English'}".
@@ -39,38 +54,41 @@ Task Context: ${promptType || 'General Conversation'}`;
 
     promptText += `New User Command / Input:\n${text || "Process request"}`;
 
-    let contents: any[] = [promptText];
+    const parts: any[] = [{ text: promptText }];
+
     if (fileData && fileData.inlineData) {
-      contents.push(fileData);
+      parts.push({
+        inline_data: {
+          mime_type: fileData.inlineData.mimeType,
+          data: fileData.inlineData.data,
+        },
+      });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    let responseText = "";
-    let modelUsed = "";
-    let lastError: any = null;
+    // 3. Make direct REST API call to discovered model endpoint
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
 
-    for (const modelName of MODEL_CANDIDATES) {
-      try {
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(contents);
-        responseText = result.response.text();
-        if (responseText) {
-          modelUsed = modelName;
-          break;
-        }
-      } catch (err: any) {
-        lastError = err;
-      }
-    }
+    const aiRes = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts }] }),
+    });
 
-    if (!responseText) {
+    const aiData = await aiRes.json();
+
+    if (!aiRes.ok) {
       return NextResponse.json(
-        { error: `Model call failed. Last error: ${lastError?.message || "Unknown error"}` },
-        { status: 500 }
+        { error: aiData?.error?.message || `API call failed for model ${selectedModel}` },
+        { status: aiRes.status }
       );
     }
 
-    return NextResponse.json({ reply: responseText, modelUsed });
+    const replyText = aiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!replyText) {
+      return NextResponse.json({ error: "No response text returned from Gemini." }, { status: 500 });
+    }
+
+    return NextResponse.json({ reply: replyText, modelUsed: selectedModel });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to process request" },

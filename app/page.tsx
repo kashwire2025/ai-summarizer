@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 
-// 25 Languages Dictionary for instant UI Localization
+// 25 Languages Dictionary covering all interface buttons and labels
 const LOCALIZATION_DICT: Record<string, Record<string, string>> = {
   en: { title: "AI Document Workbench", chooseFile: "Choose File", execSummary: "Executive Summary", keyActions: "Key Action Items", takeaways: "Top Takeaways", trends: "Analyze Trends", placeholder: "Type command, query, or edit context...", sendBtn: "Summarize / Chat", clearBtn: "Clear Workbench", exportPdf: "Export PDF", exportPng: "Export PNG", exportDoc: "Export DOC", exportTxt: "Export TXT", exportMd: "Export MD", exportSelected: "Export Highlighted Text" },
   es: { title: "Mesa de Trabajo Documental IA", chooseFile: "Elegir Archivo", execSummary: "Resumen Ejecutivo", keyActions: "Puntos Clave de Acción", takeaways: "Conclusiones Principales", trends: "Analizar Tendencias", placeholder: "Escriba un comando o consulta...", sendBtn: "Resumir / Chatear", clearBtn: "Limpiar Mesa", exportPdf: "Exportar PDF", exportPng: "Exportar PNG", exportDoc: "Exportar DOC", exportTxt: "Exportar TXT", exportMd: "Exportar MD", exportSelected: "Exportar Texto Seleccionado" },
@@ -50,7 +50,13 @@ export default function AIWorkbench() {
 
   const labels = LOCALIZATION_DICT[lang] || LOCALIZATION_DICT["en"];
 
-  // Detect text selection inside the workbench
+  // Auto-scroll output box on new message
+  useEffect(() => {
+    if (outputBoxRef.current) {
+      outputBoxRef.current.scrollTop = outputBoxRef.current.scrollHeight;
+    }
+  }, [messages, loading]);
+
   const handleTextSelection = () => {
     const selection = window.getSelection();
     if (selection && selection.toString().trim().length > 0) {
@@ -82,7 +88,7 @@ export default function AIWorkbench() {
     const userMsg: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: promptToSend + (fileName ? ` [Attached: ${fileName}]` : ""),
+      content: promptToSend + (fileName ? ` [File: ${fileName}]` : ""),
       timestamp: new Date().toLocaleTimeString(),
     };
 
@@ -141,7 +147,6 @@ export default function AIWorkbench() {
     }
   };
 
-  // Generic File Exporters
   const downloadFile = (content: string, filename: string, type: string) => {
     const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
@@ -157,16 +162,16 @@ export default function AIWorkbench() {
   };
 
   const exportAsTxt = (targetText = getFullContentText()) => {
-    downloadFile(targetText, "workbench-summary.txt", "text/plain;charset=utf-8");
+    downloadFile(targetText, "workbench-export.txt", "text/plain;charset=utf-8");
   };
 
   const exportAsMd = (targetText = getFullContentText()) => {
-    downloadFile(targetText, "workbench-summary.md", "text/markdown;charset=utf-8");
+    downloadFile(targetText, "workbench-export.md", "text/markdown;charset=utf-8");
   };
 
   const exportAsDoc = (targetText = getFullContentText()) => {
     const htmlContent = `<html><head><meta charset='utf-8'></head><body><pre style="font-family:sans-serif; white-space:pre-wrap;">${targetText}</pre></body></html>`;
-    downloadFile(htmlContent, "workbench-summary.doc", "application/msword");
+    downloadFile(htmlContent, "workbench-export.doc", "application/msword");
   };
 
   const exportAsPdf = (targetText = getFullContentText()) => {
@@ -182,7 +187,7 @@ export default function AIWorkbench() {
           </style>
         </head>
         <body>
-          <h2>AI Workbench Summary Export</h2>
+          <h2>AI Workbench Export</h2>
           <hr/>
           <pre>${targetText}</pre>
           <script>window.onload = function() { window.print(); window.close(); }</script>
@@ -216,14 +221,14 @@ export default function AIWorkbench() {
     const image = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = image;
-    a.download = "workbench-summary.png";
+    a.download = "workbench-export.png";
     a.click();
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 max-w-4xl mx-auto flex flex-col font-sans">
-      {/* Top Bar with Title and 25-Language Switcher */}
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 border-b border-slate-800 pb-4">
+      {/* Dynamic 25 Language UI Switcher */}
+      <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <h1 className="text-xl font-bold text-blue-400">{labels.title}</h1>
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-400">Language:</label>
@@ -269,7 +274,7 @@ export default function AIWorkbench() {
         </div>
       </div>
 
-      {/* Persistent Continuous Interactive Output Box */}
+      {/* Persistent Continuous Interactive Output Canvas */}
       <div
         ref={outputBoxRef}
         onMouseUp={handleTextSelection}
@@ -301,12 +306,12 @@ export default function AIWorkbench() {
         )}
         {loading && (
           <div className="text-xs text-blue-400 animate-pulse py-2">
-            AI is analyzing document and generating response...
+            AI is analyzing input and generating response...
           </div>
         )}
       </div>
 
-      {/* Selection Export Floating Action Bar */}
+      {/* Highlighted Selection Toolbar */}
       {selectedText && (
         <div className="bg-blue-900/90 border border-blue-600 p-2.5 rounded-lg mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="font-semibold text-white">✨ {labels.exportSelected}:</span>
@@ -320,7 +325,7 @@ export default function AIWorkbench() {
         </div>
       )}
 
-      {/* Full Document Export Toolbar */}
+      {/* Full Canvas Document Exporters */}
       <div className="flex flex-wrap gap-2 mb-4 justify-between items-center">
         <div className="flex flex-wrap gap-2">
           <button onClick={() => exportAsPdf()} className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded border border-slate-700">{labels.exportPdf}</button>
@@ -334,7 +339,7 @@ export default function AIWorkbench() {
         </button>
       </div>
 
-      {/* Text Input & Chat Button */}
+      {/* Input Box & Submit Button */}
       <div className="space-y-3">
         <textarea
           value={input}
