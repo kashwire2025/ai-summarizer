@@ -9,7 +9,9 @@ export default function Home() {
   const [promptType, setPromptType] = useState("General Chat");
   const [fileData, setFileData] = useState<any>(null);
   const [fileName, setFileName] = useState("");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const outputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -70,7 +72,17 @@ export default function Home() {
     }
   };
 
+  // Prioritize highlighted text from output box, fallback to global selection or full output
   const getExportContent = () => {
+    if (outputRef.current) {
+      const textarea = outputRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      if (start !== undefined && end !== undefined && start !== end) {
+        const selectedText = textarea.value.substring(start, end).trim();
+        if (selectedText) return selectedText;
+      }
+    }
     const selection = window.getSelection()?.toString().trim();
     return selection && selection.length > 0 ? selection : output;
   };
@@ -153,7 +165,6 @@ export default function Home() {
         className="hidden"
       />
 
-      {/* 1. File Upload Selector */}
       <div className="flex items-center gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
         <button
           onClick={() => fileInputRef.current?.click()}
@@ -166,7 +177,6 @@ export default function Home() {
         </span>
       </div>
 
-      {/* 2. Preset Quick Prompts */}
       <div className="grid grid-cols-2 gap-2">
         <button
           onClick={() => handleGenerate("Executive Summary")}
@@ -194,7 +204,6 @@ export default function Home() {
         </button>
       </div>
 
-      {/* 3. Input Text Box */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-slate-400">Input Prompt / Document:</label>
         <textarea
@@ -205,7 +214,6 @@ export default function Home() {
         />
       </div>
 
-      {/* 4. Action Trigger Button (Now directly under Input) */}
       <button
         onClick={() => handleGenerate("General Chat")}
         disabled={loading}
@@ -214,10 +222,13 @@ export default function Home() {
         {loading ? "Processing..." : "Summarize Document / Chat"}
       </button>
 
-      {/* 5. Output Box & Export Actions */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
-        <span className="text-xs font-semibold text-slate-400">Editable Output:</span>
+        <div className="flex justify-between items-center">
+          <span className="text-xs font-semibold text-slate-400">Editable Output:</span>
+          <span className="text-[10px] text-slate-500">Highlight text to export selected section</span>
+        </div>
         <textarea
+          ref={outputRef}
           value={output}
           onChange={(e) => setOutput(e.target.value)}
           placeholder="AI response will appear here..."
@@ -225,16 +236,16 @@ export default function Home() {
         />
 
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={downloadTxt} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700">
+          <button onClick={downloadTxt} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700 transition">
             📥 Download .TXT
           </button>
-          <button onClick={downloadMd} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700">
+          <button onClick={downloadMd} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700 transition">
             📥 Download .MD
           </button>
-          <button onClick={downloadDoc} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700">
+          <button onClick={downloadDoc} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700 transition">
             📥 Download .DOC
           </button>
-          <button onClick={downloadPng} className="bg-blue-600 text-xs py-2 rounded-lg font-semibold hover:bg-blue-500">
+          <button onClick={downloadPng} className="bg-blue-600 text-xs py-2 rounded-lg font-semibold hover:bg-blue-500 transition">
             🖼️ Download .PNG
           </button>
         </div>
