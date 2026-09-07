@@ -1,13 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
+// Valid Gemini models
 const MODEL_FALLBACK_CHAIN = [
   "gemini-2.5-flash",
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
 ];
 
-async function generateWithRetry(genAI: any, modelName: string, contents: any[], maxRetries = 1) {
+async function generateWithRetry(genAI: any, modelName: string, contents: any[], maxRetries = 2) {
   let delay = 1000;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -15,8 +15,13 @@ async function generateWithRetry(genAI: any, modelName: string, contents: any[],
       const result = await model.generateContent(contents);
       return await result.response.text();
     } catch (err: any) {
-      const is503 = err?.status === 503 || err?.message?.includes("503") || err?.message?.includes("high demand");
-      if (is503 && attempt < maxRetries) {
+      const isTransient =
+        err?.status === 503 ||
+        err?.message?.includes("503") ||
+        err?.message?.includes("high demand") ||
+        err?.message?.includes("overloaded");
+
+      if (isTransient && attempt < maxRetries) {
         await new Promise((res) => setTimeout(res, delay + Math.random() * 500));
         delay *= 2;
         continue;
@@ -42,11 +47,10 @@ export async function POST(req: Request) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const systemInstruction = promptType && promptType !== "General Chat"
       ? `Perform document analysis (${promptType}) on the provided input:`
-      : `You are a helpful AI assistant. Analyze and summarize the provided input:`;
+      : `You are a helpful AI assistant. Analyze or answer questions regarding the provided input:`;
 
     const contents: any[] = [systemInstruction];
 
-    // Properly format base64 file attachment
     if (fileData?.inlineData?.data) {
       contents.push({
         inlineData: {
@@ -71,7 +75,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Return the actual underlying error instead of masking it
     return NextResponse.json({ error: `API Error: ${lastError}` }, { status: 500 });
   } catch (error: any) {
     return NextResponse.json({ error: `Server Error: ${error.message}` }, { status: 500 });
