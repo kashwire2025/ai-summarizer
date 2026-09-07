@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 
-// Active Gemini model fallbacks (Purged deactivated models to fix 404 errors)
+// Active Gemini model fallback chain
 const API_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
+  "gemini-1.5-flash",
   "gemini-2.0-flash",
 ];
 
