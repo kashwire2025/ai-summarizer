@@ -2,41 +2,78 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.GEMINI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(apiKey);
+
+const MODEL_CANDIDATES = [
+  "gemini-2.5-flash",
+  "gemini-3.6-flash",
+  "gemini-1.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-pro",
+];
 
 export async function POST(req: Request) {
   try {
     if (!apiKey) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY is missing in Vercel. Add it under Vercel Settings > Environment Variables." },
+        { error: "GEMINI_API_KEY is missing in Vercel Environment Variables." },
         { status: 500 }
       );
     }
 
-    const { text, fileData, promptType, language } = await req.json();
+    const { text, history, fileData, promptType, language } = await req.json();
 
-    // Directly call the official gemini-3.6-flash model
-    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
-
-    const systemInstruction = `You are an interactive conversational AI web assistant and document workbench.
-You respond comprehensively to every question, command, document analysis, and chat prompt like a web AI.
+    const systemInstruction = `You are an interactive conversational AI document analyzer and web workbench.
+You maintain continuous dialogue, answer follow-up queries, and analyze documents.
 CRITICAL MANDATE: Respond ENTIRELY in this language: "${language || 'English'}".
-Task Context: ${promptType || 'General Chat'}`;
+Task Context: ${promptType || 'General Conversation'}`;
 
-    const promptText = `${systemInstruction}\n\nUser Input / Request:\n${text || "Hello"}`;
+    let promptText = `${systemInstruction}\n\n`;
+
+    if (Array.isArray(history) && history.length > 0) {
+      promptText += `--- Conversation History ---\n`;
+      history.slice(-8).forEach((msg: { role: string; content: string }) => {
+        promptText += `${msg.role === "user" ? "User" : "AI"}: ${msg.content}\n`;
+      });
+      promptText += `--- End History ---\n\n`;
+    }
+
+    promptText += `New User Command / Input:\n${text || "Process request"}`;
 
     let contents: any[] = [promptText];
     if (fileData && fileData.inlineData) {
       contents.push(fileData);
     }
 
-    const result = await model.generateContent(contents);
-    const responseText = result.response.text();
+    const genAI = new GoogleGenerativeAI(apiKey);
+    let responseText = "";
+    let modelUsed = "";
+    let lastError: any = null;
 
-    return NextResponse.json({ summary: responseText, modelUsed: "gemini-3.6-flash" });
+    for (const modelName of MODEL_CANDIDATES) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(contents);
+        responseText = result.response.text();
+        if (responseText) {
+          modelUsed = modelName;
+          break;
+        }
+      } catch (err: any) {
+        lastError = err;
+      }
+    }
+
+    if (!responseText) {
+      return NextResponse.json(
+        { error: `Model call failed. Last error: ${lastError?.message || "Unknown error"}` },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ reply: responseText, modelUsed });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Failed to process AI request" },
+      { error: error.message || "Failed to process request" },
       { status: 500 }
     );
   }
