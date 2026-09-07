@@ -1,18 +1,29 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-// Valid Gemini models
+// Active Gemini model identifiers
 const MODEL_FALLBACK_CHAIN = [
   "gemini-2.5-flash",
-  "gemini-2.0-flash",
+  "gemini-2.5-pro",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
 ];
 
-async function generateWithRetry(genAI: any, modelName: string, contents: any[], maxRetries = 2) {
+async function generateWithRetry(
+  genAI: any,
+  modelName: string,
+  systemInstruction: string,
+  promptParts: any[],
+  maxRetries = 2
+) {
   let delay = 1000;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent(contents);
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: systemInstruction,
+      });
+      const result = await model.generateContent(promptParts);
       return await result.response.text();
     } catch (err: any) {
       const isTransient =
@@ -49,10 +60,10 @@ export async function POST(req: Request) {
       ? `Perform document analysis (${promptType}) on the provided input:`
       : `You are a helpful AI assistant. Analyze or answer questions regarding the provided input:`;
 
-    const contents: any[] = [systemInstruction];
+    const promptParts: any[] = [];
 
     if (fileData?.inlineData?.data) {
-      contents.push({
+      promptParts.push({
         inlineData: {
           data: fileData.inlineData.data,
           mimeType: fileData.inlineData.mimeType || "application/pdf",
@@ -61,16 +72,18 @@ export async function POST(req: Request) {
     }
 
     if (text && !text.startsWith("[Attached File:")) {
-      contents.push(text);
+      promptParts.push(text);
+    } else if (promptParts.length === 0 && text) {
+      promptParts.push(text);
     }
 
     let lastError = "";
     for (const modelName of MODEL_FALLBACK_CHAIN) {
       try {
-        const responseText = await generateWithRetry(genAI, modelName, contents);
+        const responseText = await generateWithRetry(genAI, modelName, systemInstruction, promptParts);
         if (responseText) return NextResponse.json({ summary: responseText });
       } catch (err: any) {
-        lastError = err?.message || String(err);
+        lastError = `[${modelName}]: ${err?.message || String(err)}`;
         console.warn(`Model ${modelName} failed:`, lastError);
       }
     }
