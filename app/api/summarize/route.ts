@@ -7,7 +7,6 @@ export async function POST(req: Request) {
   try {
     const { text, fileData, promptType, language } = await req.json();
 
-    // Use active stable model endpoint
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const systemInstruction = `You are an interactive AI web assistant and document analyzer. 
