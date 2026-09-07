@@ -153,7 +153,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white p-4 max-w-5xl mx-auto flex flex-col gap-4">
+    <main className="min-h-screen bg-slate-950 text-white p-4 max-w-xl mx-auto flex flex-col gap-4">
       <h1 className="text-xl font-bold text-center my-2">AI Document Workbench</h1>
 
       <input
@@ -164,7 +164,7 @@ export default function Home() {
         className="hidden"
       />
 
-      {/* Header File Upload Selector */}
+      {/* 1. File Upload Box */}
       <div className="flex items-center gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
         <button
           onClick={() => fileInputRef.current?.click()}
@@ -177,82 +177,79 @@ export default function Home() {
         </span>
       </div>
 
-      {/* Split Workbench Grid: Input Panel Left, Output Panel Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        {/* Input Panel */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
-          <label className="text-xs font-semibold text-slate-400">Input Prompt / Document:</label>
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="Ask a question, chat naturally, or paste document text..."
-            className="w-full h-56 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:outline-none focus:border-blue-500 resize-none"
-          />
+      {/* 2. Main Input Box Container */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+        <label className="text-xs font-semibold text-slate-400">Input Prompt / Document:</label>
+        <textarea
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="Ask a question, chat naturally, or paste document text..."
+          className="w-full h-40 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:outline-none focus:border-blue-500 resize-none"
+        />
 
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => handleGenerate("Executive Summary")}
-              className="bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs font-semibold text-left hover:bg-slate-700 transition"
-            >
-              📋 Executive Summary
-            </button>
-            <button
-              onClick={() => handleGenerate("Key Action Items")}
-              className="bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs font-semibold text-left hover:bg-slate-700 transition"
-            >
-              ✅ Key Action Items
-            </button>
-            <button
-              onClick={() => handleGenerate("Top Takeaways")}
-              className="bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs font-semibold text-left hover:bg-slate-700 transition"
-            >
-              💡 Top Takeaways
-            </button>
-            <button
-              onClick={() => handleGenerate("Analyze Trends")}
-              className="bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs font-semibold text-left hover:bg-slate-700 transition"
-            >
-              📊 Analyze Trends
-            </button>
-          </div>
-
+        <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => handleGenerate("General Chat")}
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-3 rounded-lg text-sm font-semibold transition"
+            onClick={() => handleGenerate("Executive Summary")}
+            className="bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs font-semibold text-left hover:bg-slate-700 transition"
           >
-            {loading ? "Processing..." : "Summarize Document / Chat"}
+            📋 Executive Summary
+          </button>
+          <button
+            onClick={() => handleGenerate("Key Action Items")}
+            className="bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs font-semibold text-left hover:bg-slate-700 transition"
+          >
+            ✅ Key Action Items
+          </button>
+          <button
+            onClick={() => handleGenerate("Top Takeaways")}
+            className="bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs font-semibold text-left hover:bg-slate-700 transition"
+          >
+            💡 Top Takeaways
+          </button>
+          <button
+            onClick={() => handleGenerate("Analyze Trends")}
+            className="bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs font-semibold text-left hover:bg-slate-700 transition"
+          >
+            📊 Analyze Trends
           </button>
         </div>
 
-        {/* Output Panel */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-semibold text-slate-400">Editable Output:</span>
-            <span className="text-[10px] text-slate-500">Highlight text to export selected section</span>
-          </div>
-          <textarea
-            ref={outputRef}
-            value={output}
-            onChange={(e) => setOutput(e.target.value)}
-            placeholder="AI response will appear here..."
-            className="w-full h-56 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:outline-none resize-none font-mono text-slate-200"
-          />
+        <button
+          onClick={() => handleGenerate("General Chat")}
+          disabled={loading}
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-3 rounded-lg text-sm font-semibold transition"
+        >
+          {loading ? "Processing..." : "Summarize Document / Chat"}
+        </button>
+      </div>
 
-          <div className="grid grid-cols-2 gap-2 mt-[52px]">
-            <button onClick={downloadTxt} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700 transition">
-              📥 Download .TXT
-            </button>
-            <button onClick={downloadMd} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700 transition">
-              📥 Download .MD
-            </button>
-            <button onClick={downloadDoc} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700 transition">
-              📥 Download .DOC
-            </button>
-            <button onClick={downloadPng} className="bg-blue-600 text-xs py-2 rounded-lg font-semibold hover:bg-blue-500 transition">
-              🖼️ Download .PNG
-            </button>
-          </div>
+      {/* 3. Output Box & Export Actions */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+        <div className="flex justify-between items-center">
+          <span className="text-xs font-semibold text-slate-400">Editable Output:</span>
+          <span className="text-[10px] text-slate-500">Highlight text to export selected section</span>
+        </div>
+        <textarea
+          ref={outputRef}
+          value={output}
+          onChange={(e) => setOutput(e.target.value)}
+          placeholder="AI response will appear here..."
+          className="w-full h-40 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:outline-none resize-none font-mono text-slate-200"
+        />
+
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={downloadTxt} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700 transition">
+            📥 Download .TXT
+          </button>
+          <button onClick={downloadMd} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700 transition">
+            📥 Download .MD
+          </button>
+          <button onClick={downloadDoc} className="bg-slate-800 text-xs py-2 rounded-lg hover:bg-slate-700 transition">
+            📥 Download .DOC
+          </button>
+          <button onClick={downloadPng} className="bg-blue-600 text-xs py-2 rounded-lg font-semibold hover:bg-blue-500 transition">
+            🖼️ Download .PNG
+          </button>
         </div>
       </div>
     </main>

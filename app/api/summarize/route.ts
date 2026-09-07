@@ -1,12 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-// Active Gemini model identifiers
 const MODEL_FALLBACK_CHAIN = [
   "gemini-2.5-flash",
   "gemini-2.5-pro",
-  "gemini-1.5-flash",
-  "gemini-1.5-pro",
 ];
 
 async function generateWithRetry(
@@ -14,7 +11,7 @@ async function generateWithRetry(
   modelName: string,
   systemInstruction: string,
   promptParts: any[],
-  maxRetries = 2
+  maxRetries = 1
 ) {
   let delay = 1000;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -83,7 +80,7 @@ export async function POST(req: Request) {
         const responseText = await generateWithRetry(genAI, modelName, systemInstruction, promptParts);
         if (responseText) return NextResponse.json({ summary: responseText });
       } catch (err: any) {
-        lastError = `[${modelName}]: ${err?.message || String(err)}`;
+        lastError = err?.message || String(err);
         console.warn(`Model ${modelName} failed:`, lastError);
       }
     }
