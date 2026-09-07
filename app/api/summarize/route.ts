@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 
-// Fallback model chain ensuring standard Google API compatibility
+// Active Gemini model fallbacks (Purged deactivated models to fix 404 errors)
 const API_MODELS = [
   "gemini-2.5-flash",
-  "gemini-1.5-flash",
+  "gemini-2.5-pro",
   "gemini-2.0-flash",
-  "gemini-1.5-pro",
 ];
 
 export async function POST(req: Request) {
@@ -19,12 +18,12 @@ export async function POST(req: Request) {
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
       return NextResponse.json({ 
-        error: "GEMINI_API_KEY environment variable is missing. Please add GEMINI_API_KEY in Vercel Project Settings -> Environment Variables." 
+        error: "GEMINI_API_KEY missing. Please configure GEMINI_API_KEY under Vercel Project Settings." 
       }, { status: 500 });
     }
 
     const targetLang = language || "English";
-    const promptHeader = `[Instruction: Respond in ${targetLang}. ${promptType && promptType !== "General Chat" ? `Perform analysis: ${promptType}` : "Analyze and answer concisely"}]`;
+    const promptHeader = `[Instruction: Respond exclusively in ${targetLang}. ${promptType && promptType !== "General Chat" ? `Perform analysis: ${promptType}` : "Analyze and answer directly"}]`;
 
     const parts: any[] = [];
 
@@ -45,7 +44,6 @@ export async function POST(req: Request) {
 
     let lastError = "";
 
-    // Standard Direct REST payload call prevents SDK model path mismatch errors
     for (const model of API_MODELS) {
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -53,12 +51,7 @@ export async function POST(req: Request) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: parts,
-              },
-            ],
+            contents: [{ role: "user", parts }],
           }),
         });
 
@@ -74,7 +67,7 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ error: `API Error: ${lastError || "All models failed to respond"}` }, { status: 500 });
+    return NextResponse.json({ error: `API Error: ${lastError || "Failed to generate response"}` }, { status: 500 });
   } catch (error: any) {
     return NextResponse.json({ error: `Server Error: ${error.message}` }, { status: 500 });
   }

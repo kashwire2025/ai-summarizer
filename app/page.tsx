@@ -35,7 +35,7 @@ const I18N: Record<string, Record<string, string>> = {
     dlDoc: "📥 Download .DOC",
     dlPng: "🖼️ Download .PNG",
     modalTitle: "Account Sign In",
-    googleSignIn: "Continue with Google",
+    googleSignIn: "Sign in with Google",
     guestSignIn: "Continue as Guest",
   },
   Français: {
@@ -62,7 +62,7 @@ const I18N: Record<string, Record<string, string>> = {
     dlDoc: "📥 Télécharger .DOC",
     dlPng: "🖼️ Télécharger .PNG",
     modalTitle: "Connexion au Compte",
-    googleSignIn: "Continuer avec Google",
+    googleSignIn: "Se connecter avec Google",
     guestSignIn: "Continuer en tant qu'invité",
   },
   Español: {
@@ -89,7 +89,7 @@ const I18N: Record<string, Record<string, string>> = {
     dlDoc: "📥 Descargar .DOC",
     dlPng: "🖼️ Descargar .PNG",
     modalTitle: "Iniciar Sesión",
-    googleSignIn: "Continuar con Google",
+    googleSignIn: "Iniciar sesión con Google",
     guestSignIn: "Continuar como invitado",
   },
   Deutsch: {
@@ -116,7 +116,7 @@ const I18N: Record<string, Record<string, string>> = {
     dlDoc: "📥 Download .DOC",
     dlPng: "🖼️ Download .PNG",
     modalTitle: "Anmeldung",
-    googleSignIn: "Mit Google fortfahren",
+    googleSignIn: "Mit Google anmelden",
     guestSignIn: "Als Gast fortfahren",
   },
   "中文": {
@@ -170,116 +170,8 @@ const I18N: Record<string, Record<string, string>> = {
     dlDoc: "📥 تحميل .DOC",
     dlPng: "🖼️ تحميل .PNG",
     modalTitle: "تسجيل الدخول",
-    googleSignIn: "المتابعة باستخدام Google",
+    googleSignIn: "تسجيل الدخول باستخدام Google",
     guestSignIn: "المتابعة كضيف",
-  },
-  Português: {
-    title: "Painel de Documentos IA",
-    auth: "Entrar / Cadastrar",
-    signOut: "Sair",
-    langLabel: "Idioma (25 suportados):",
-    themeLabel: "Tema:",
-    uploadLabel: "Enviar Documento / Imagem",
-    chooseFile: "Escolher Arquivo",
-    noFile: "Nenhum arquivo escolhido",
-    execSummary: "Resumo Executivo",
-    keyActions: "Ações Principais",
-    topTakeaways: "Pontos Chave",
-    analyzeTrends: "Analisar Tendências",
-    outputLabel: "Resultado Editável:",
-    outputSubtext: "Destaque o texto para exportar a seleção",
-    inputLabel: "Entrada / Documento:",
-    placeholder: "Faça uma pergunta, converse ou cole o texto...",
-    submit: "Resumir / Conversar",
-    processing: "Processando...",
-    dlTxt: "📥 Baixar .TXT",
-    dlMd: "📥 Baixar .MD",
-    dlDoc: "📥 Baixar .DOC",
-    dlPng: "🖼️ Baixar .PNG",
-    modalTitle: "Entrar na Conta",
-    googleSignIn: "Continuar com o Google",
-    guestSignIn: "Continuar como Convidado",
-  },
-  Русский: {
-    title: "ИИ Панель Документов",
-    auth: "Вход / Регистрация",
-    signOut: "Выйти",
-    langLabel: "Язык (поддержка 25):",
-    themeLabel: "Тема:",
-    uploadLabel: "Загрузить документ / фото",
-    chooseFile: "Выбрать файл",
-    noFile: "Файл не выбран",
-    execSummary: "Краткое изложение",
-    keyActions: "Ключевые действия",
-    topTakeaways: "Главные выводы",
-    analyzeTrends: "Анализ трендов",
-    outputLabel: "Редактируемый вывод:",
-    outputSubtext: "Выделите текст для экспорта выбранного фрагмента",
-    inputLabel: "Ввод / Документ:",
-    placeholder: "Задайте вопрос или вставьте текст...",
-    submit: "Создать сводку / Чат",
-    processing: "Обработка...",
-    dlTxt: "📥 Скачать .TXT",
-    dlMd: "📥 Скачать .MD",
-    dlDoc: "📥 Скачать .DOC",
-    dlPng: "🖼️ Скачать .PNG",
-    modalTitle: "Вход в аккаунт",
-    googleSignIn: "Войти через Google",
-    guestSignIn: "Продолжить как гость",
-  },
-  日本語: {
-    title: "AI ドキュメント ワークベンチ",
-    auth: "ログイン / 新規登録",
-    signOut: "ログアウト",
-    langLabel: "言語 (25言語対応):",
-    themeLabel: "テーマ:",
-    uploadLabel: "ドキュメント / 画像のアップロード",
-    chooseFile: "ファイルを選択",
-    noFile: "選択されていません",
-    execSummary: "エグゼクティブサマリー",
-    keyActions: "主要なアクション",
-    topTakeaways: "重要なポイント",
-    analyzeTrends: "トレンド分析",
-    outputLabel: "編集可能な出力:",
-    outputSubtext: "テキストをハイライトして選択部分のみを出力",
-    inputLabel: "入力プロンプト / ドキュメント:",
-    placeholder: "質問の入力、チャット、またはテキストを貼り付け...",
-    submit: "要約 / チャット実行",
-    processing: "処理中...",
-    dlTxt: "📥 .TXT ダウンロード",
-    dlMd: "📥 .MD ダウンロード",
-    dlDoc: "📥 .DOC ダウンロード",
-    dlPng: "🖼️ .PNG ダウンロード",
-    modalTitle: "アカウント ログイン",
-    googleSignIn: "Google でログイン",
-    guestSignIn: "ゲストとして継続",
-  },
-  한국어: {
-    title: "AI 문서 워크벤치",
-    auth: "로그인 / 회원가입",
-    signOut: "로그아웃",
-    langLabel: "언어 (25개 지원):",
-    themeLabel: "테마:",
-    uploadLabel: "문서 / 이미지 업로드",
-    chooseFile: "파일 선택",
-    noFile: "선택된 파일 없음",
-    execSummary: "요약 보고서",
-    keyActions: "핵심 실행 항목",
-    topTakeaways: "주요 핵심 내용",
-    analyzeTrends: "트렌드 분석",
-    outputLabel: "편집 가능한 출력:",
-    outputSubtext: "텍스트를 드래그하여 선택 부분만 내보내기",
-    inputLabel: "입력 프롬프트 / 문서:",
-    placeholder: "질문 입력, 대화 또는 문서 텍스트 붙여넣기...",
-    submit: "요약하기 / 대화하기",
-    processing: "처리 중...",
-    dlTxt: "📥 .TXT 다운로드",
-    dlMd: "📥 .MD 다운로드",
-    dlDoc: "📥 .DOC 다운로드",
-    dlPng: "🖼️ .PNG 다운로드",
-    modalTitle: "계정 로그인",
-    googleSignIn: "Google 계정으로 로그인",
-    guestSignIn: "게스트로 계속하기",
   },
 };
 
@@ -288,12 +180,12 @@ export default function Home() {
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [promptType, setPromptType] = useState("General Chat");
-  const [language, setLanguage] = useState("Français");
-  const [theme, setTheme] = useState("dark");
+  const [language, setLanguage] = useState("English");
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [fileData, setFileData] = useState<any>(null);
   const [fileName, setFileName] = useState("");
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [user, setUser] = useState<{ name: string; email: string; avatar?: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLTextAreaElement>(null);
@@ -307,16 +199,14 @@ export default function Home() {
     }
   }, []);
 
-  const handleGoogleSignIn = () => {
-    // Authenticate user session
-    const dummyUser = {
-      name: "Jerry Moses Urama",
-      email: "jerry@pamourafoods.com",
-      avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=JerryMax"
-    };
-    setUser(dummyUser);
-    localStorage.setItem("app_user", JSON.stringify(dummyUser));
-    setShowAuthModal(false);
+  const handleGoogleSignInPrompt = () => {
+    const email = window.prompt("Enter your Google Account email to sign in:");
+    if (email) {
+      const newUser = { name: email.split("@")[0], email };
+      setUser(newUser);
+      localStorage.setItem("app_user", JSON.stringify(newUser));
+      setShowAuthModal(false);
+    }
   };
 
   const handleSignOut = () => {
@@ -442,10 +332,10 @@ export default function Home() {
 
     canvas.width = 800;
     canvas.height = 600;
-    ctx.fillStyle = "#0f172a";
+    ctx.fillStyle = theme === "dark" ? "#0f172a" : "#f8fafc";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = theme === "dark" ? "#ffffff" : "#0f172a";
     ctx.font = "16px sans-serif";
 
     const lines = content.split("\n");
@@ -464,14 +354,22 @@ export default function Home() {
     a.click();
   };
 
+  // Dynamic Theme Classes
+  const isDark = theme === "dark";
+  const bgMain = isDark ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-900";
+  const bgCard = isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm";
+  const bgInner = isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-900";
+  const textMuted = isDark ? "text-slate-400" : "text-slate-500";
+  const btnSecondary = isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-slate-200 hover:bg-slate-300 text-slate-800";
+
   return (
-    <main className="min-h-screen bg-slate-950 text-white p-4 max-w-lg mx-auto flex flex-col gap-3 relative">
-      {/* 1. Header Card with Active Sign-In Handler */}
-      <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex justify-between items-center">
+    <main className={`min-h-screen ${bgMain} p-4 max-w-lg mx-auto flex flex-col gap-3 relative transition-colors duration-200`}>
+      {/* Header */}
+      <div className={`${bgCard} border p-4 rounded-2xl flex justify-between items-center`}>
         <h1 className="text-xl font-bold leading-tight">{t.title}</h1>
         {user ? (
-          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800">
-            <span className="text-xs font-semibold text-blue-400 truncate max-w-[90px]">{user.name}</span>
+          <div className={`flex items-center gap-2 ${bgInner} p-2 rounded-xl border`}>
+            <span className="text-xs font-semibold text-blue-500 truncate max-w-[90px]">{user.name}</span>
             <button
               onClick={handleSignOut}
               className="bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition"
@@ -489,14 +387,14 @@ export default function Home() {
         )}
       </div>
 
-      {/* 2. Settings Row (Language & Theme) */}
+      {/* Language & Active Theme Switcher */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-2xl flex flex-col gap-2">
-          <label className="text-xs text-slate-400 font-medium">{t.langLabel}</label>
+        <div className={`${bgCard} border p-3.5 rounded-2xl flex flex-col gap-2`}>
+          <label className={`text-xs ${textMuted} font-medium`}>{t.langLabel}</label>
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            className="bg-slate-950 border border-blue-500/50 rounded-xl p-2.5 text-xs font-medium text-white outline-none focus:border-blue-500"
+            className={`${bgInner} border rounded-xl p-2.5 text-xs font-medium outline-none focus:border-blue-500`}
           >
             {LANGUAGES.map((lang) => (
               <option key={lang} value={lang}>{lang}</option>
@@ -504,22 +402,24 @@ export default function Home() {
           </select>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-2xl flex flex-col gap-2">
-          <label className="text-xs text-slate-400 font-medium">{t.themeLabel}</label>
+        <div className={`${bgCard} border p-3.5 rounded-2xl flex flex-col gap-2`}>
+          <label className={`text-xs ${textMuted} font-medium`}>{t.themeLabel}</label>
           <div className="flex items-center gap-3 mt-1">
             <button
               onClick={() => setTheme("dark")}
-              className={`w-7 h-7 rounded-full bg-black border-2 ${theme === "dark" ? "border-blue-500 ring-2 ring-blue-500/30" : "border-slate-700"}`}
+              title="Dark Mode"
+              className={`w-8 h-8 rounded-full bg-slate-950 border-2 transition ${isDark ? "border-blue-500 ring-2 ring-blue-500/30 scale-105" : "border-slate-700 opacity-60"}`}
             />
             <button
               onClick={() => setTheme("light")}
-              className={`w-7 h-7 rounded-full bg-white border-2 ${theme === "light" ? "border-blue-500 ring-2 ring-blue-500/30" : "border-slate-700"}`}
+              title="Light Mode"
+              className={`w-8 h-8 rounded-full bg-white border-2 transition ${!isDark ? "border-blue-500 ring-2 ring-blue-500/30 scale-105" : "border-slate-300 opacity-60"}`}
             />
           </div>
         </div>
       </div>
 
-      {/* 3. Document Upload Card */}
+      {/* Upload Box */}
       <input
         type="file"
         ref={fileInputRef}
@@ -527,117 +427,116 @@ export default function Home() {
         accept=".txt,.md,.pdf,.doc,.docx,image/*"
         className="hidden"
       />
-      <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col gap-2">
-        <label className="text-xs text-slate-400 font-medium">{t.uploadLabel}</label>
-        <div className="flex items-center justify-between bg-slate-950 border border-slate-800 p-2.5 rounded-xl">
+      <div className={`${bgCard} border p-4 rounded-2xl flex flex-col gap-2`}>
+        <label className={`text-xs ${textMuted} font-medium`}>{t.uploadLabel}</label>
+        <div className={`flex items-center justify-between ${bgInner} border p-2.5 rounded-xl`}>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition"
           >
             {t.chooseFile}
           </button>
-          <span className="text-xs text-slate-400 truncate max-w-[160px]">
+          <span className={`text-xs ${textMuted} truncate max-w-[160px]`}>
             {fileName || t.noFile}
           </span>
         </div>
       </div>
 
-      {/* 4. Quick Actions Grid */}
+      {/* Quick Prompt Grid */}
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => handleGenerate("Executive Summary")}
-          className="bg-slate-900 border border-slate-800 hover:bg-slate-800 p-4 rounded-2xl flex items-center gap-3 text-left transition"
+          className={`${bgCard} border hover:border-blue-500/50 p-4 rounded-2xl flex items-center gap-3 text-left transition`}
         >
           <span className="text-lg">📋</span>
           <span className="text-xs font-semibold leading-tight">{t.execSummary}</span>
         </button>
         <button
           onClick={() => handleGenerate("Key Action Items")}
-          className="bg-slate-900 border border-slate-800 hover:bg-slate-800 p-4 rounded-2xl flex items-center gap-3 text-left transition"
+          className={`${bgCard} border hover:border-blue-500/50 p-4 rounded-2xl flex items-center gap-3 text-left transition`}
         >
           <span className="text-lg">✅</span>
           <span className="text-xs font-semibold leading-tight">{t.keyActions}</span>
         </button>
         <button
           onClick={() => handleGenerate("Top Takeaways")}
-          className="bg-slate-900 border border-slate-800 hover:bg-slate-800 p-4 rounded-2xl flex items-center gap-3 text-left transition"
+          className={`${bgCard} border hover:border-blue-500/50 p-4 rounded-2xl flex items-center gap-3 text-left transition`}
         >
           <span className="text-lg">💡</span>
           <span className="text-xs font-semibold leading-tight">{t.topTakeaways}</span>
         </button>
         <button
           onClick={() => handleGenerate("Analyze Trends")}
-          className="bg-slate-900 border border-slate-800 hover:bg-slate-800 p-4 rounded-2xl flex items-center gap-3 text-left transition"
+          className={`${bgCard} border hover:border-blue-500/50 p-4 rounded-2xl flex items-center gap-3 text-left transition`}
         >
           <span className="text-lg">📊</span>
           <span className="text-xs font-semibold leading-tight">{t.analyzeTrends}</span>
         </button>
       </div>
 
-      {/* 5. OUTPUT SUMMARY BOX (UP) */}
-      <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col gap-3">
+      {/* Output Summaries Box (Up) */}
+      <div className={`${bgCard} border p-4 rounded-2xl flex flex-col gap-3`}>
         <div className="flex justify-between items-center">
-          <span className="text-xs font-semibold text-slate-400">{t.outputLabel}</span>
-          <span className="text-[10px] text-slate-500">{t.outputSubtext}</span>
+          <span className={`text-xs font-semibold ${textMuted}`}>{t.outputLabel}</span>
+          <span className={`text-[10px] ${textMuted}`}>{t.outputSubtext}</span>
         </div>
         <textarea
           ref={outputRef}
           value={output}
           onChange={(e) => setOutput(e.target.value)}
           placeholder={t.outputLabel}
-          className="w-full h-36 bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none resize-none font-mono text-slate-200"
+          className={`w-full h-36 ${bgInner} border rounded-xl p-3 text-sm focus:outline-none resize-none font-mono`}
         />
 
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={downloadTxt} className="bg-slate-800 text-xs py-2.5 rounded-xl hover:bg-slate-700 transition">
+          <button onClick={downloadTxt} className={`${btnSecondary} text-xs py-2.5 rounded-xl transition`}>
             {t.dlTxt}
           </button>
-          <button onClick={downloadMd} className="bg-slate-800 text-xs py-2.5 rounded-xl hover:bg-slate-700 transition">
+          <button onClick={downloadMd} className={`${btnSecondary} text-xs py-2.5 rounded-xl transition`}>
             {t.dlMd}
           </button>
-          <button onClick={downloadDoc} className="bg-slate-800 text-xs py-2.5 rounded-xl hover:bg-slate-700 transition">
+          <button onClick={downloadDoc} className={`${btnSecondary} text-xs py-2.5 rounded-xl transition`}>
             {t.dlDoc}
           </button>
-          <button onClick={downloadPng} className="bg-blue-600 text-xs py-2.5 rounded-xl font-semibold hover:bg-blue-500 transition">
+          <button onClick={downloadPng} className="bg-blue-600 text-xs py-2.5 rounded-xl font-semibold text-white hover:bg-blue-500 transition">
             {t.dlPng}
           </button>
         </div>
       </div>
 
-      {/* 6. INPUT PROMPT BOX (DOWN) */}
-      <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col gap-3">
-        <label className="text-xs font-medium text-slate-400">{t.inputLabel}</label>
+      {/* Input Prompt Box (Down) */}
+      <div className={`${bgCard} border p-4 rounded-2xl flex flex-col gap-3`}>
+        <label className={`text-xs font-medium ${textMuted}`}>{t.inputLabel}</label>
         <textarea
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder={t.placeholder}
-          className="w-full h-32 bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 resize-none text-slate-200"
+          className={`w-full h-32 ${bgInner} border rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 resize-none`}
         />
         <button
           onClick={() => handleGenerate("General Chat")}
           disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-3 rounded-xl text-sm font-semibold transition shadow-lg shadow-blue-600/20"
+          className="w-full bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 py-3 rounded-xl text-sm font-semibold transition shadow-lg shadow-blue-600/20"
         >
           {loading ? t.processing : t.submit}
         </button>
       </div>
 
-      {/* Auth Modal Overlay */}
+      {/* Auth Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm flex flex-col gap-4 relative shadow-2xl">
+          <div className={`${bgCard} border rounded-2xl p-6 w-full max-w-sm flex flex-col gap-4 relative shadow-2xl`}>
             <button
               onClick={() => setShowAuthModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold text-sm"
+              className={`absolute top-4 right-4 ${textMuted} hover:text-red-500 font-bold text-sm`}
             >
               ✕
             </button>
-            <h2 className="text-lg font-bold text-center text-white">{t.modalTitle}</h2>
-            <p className="text-xs text-slate-400 text-center">Sign in to save your workspaces and export preferences.</p>
+            <h2 className="text-lg font-bold text-center">{t.modalTitle}</h2>
             
             <button
-              onClick={handleGoogleSignIn}
-              className="w-full bg-white hover:bg-slate-100 text-slate-900 font-semibold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-3 transition shadow-md"
+              onClick={handleGoogleSignInPrompt}
+              className="w-full bg-white text-slate-900 border border-slate-300 hover:bg-slate-100 font-semibold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-3 transition"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -650,7 +549,7 @@ export default function Home() {
 
             <button
               onClick={() => setShowAuthModal(false)}
-              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-xl text-xs transition"
+              className={`${btnSecondary} w-full py-2.5 rounded-xl text-xs transition`}
             >
               {t.guestSignIn}
             </button>
