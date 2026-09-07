@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 
-// Active Gemini model fallback chain
+// Target Gemini 3.6 Flash endpoint
 const API_MODELS = [
-  "gemini-1.5-flash",
-  "gemini-2.0-flash",
+  "gemini-3.6-flash",
 ];
 
 export async function POST(req: Request) {
