@@ -7,13 +7,15 @@ export async function POST(req: Request) {
   try {
     const { text, fileData, promptType, language } = await req.json();
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // Configured to gemini-1.5-pro for maximum reasoning performance
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
-    const systemInstruction = `You are a professional document analysis assistant.
-CRITICAL: You MUST output your response ENTIRELY in the following language: "${language}".
-Requested Task: ${promptType}`;
+    const systemInstruction = `You are an interactive AI web assistant and document analyzer. 
+You answer questions, execute instructions, engage in natural chat, and analyze documents.
+CRITICAL MANDATE: You MUST respond ENTIRELY in the following language: "${language || 'English'}".
+Task/Prompt Context: ${promptType || 'General Chat'}`;
 
-    const promptText = `${systemInstruction}\n\nDocument Text / Input:\n${text || "Analyze attached file."}`;
+    const promptText = `${systemInstruction}\n\nUser Input / Document Text:\n${text || "Hello"}`;
 
     let contents: any[] = [promptText];
     if (fileData && fileData.inlineData) {
@@ -26,7 +28,7 @@ Requested Task: ${promptType}`;
     return NextResponse.json({ summary: responseText });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Failed to process request" },
+      { error: error.message || "Failed to process AI request" },
       { status: 500 }
     );
   }
