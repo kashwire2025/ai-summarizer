@@ -11,7 +11,6 @@ export default function Home() {
   const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Parse TXT/MD directly or convert PDF/DOC/Images to Base64
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -71,7 +70,6 @@ export default function Home() {
     }
   };
 
-  // Helper to export highlighted text or full output
   const getExportContent = () => {
     const selection = window.getSelection()?.toString().trim();
     return selection && selection.length > 0 ? selection : output;
@@ -155,6 +153,7 @@ export default function Home() {
         className="hidden"
       />
 
+      {/* 1. File Upload Selector */}
       <div className="flex items-center gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
         <button
           onClick={() => fileInputRef.current?.click()}
@@ -167,6 +166,7 @@ export default function Home() {
         </span>
       </div>
 
+      {/* 2. Preset Quick Prompts */}
       <div className="grid grid-cols-2 gap-2">
         <button
           onClick={() => handleGenerate("Executive Summary")}
@@ -194,13 +194,27 @@ export default function Home() {
         </button>
       </div>
 
-      <textarea
-        value={inputText}
-        onChange={(e) => setInputText(e.target.value)}
-        placeholder="Ask a question, chat naturally, or paste document text..."
-        className="w-full h-32 bg-slate-900 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 resize-none"
-      />
+      {/* 3. Input Text Box */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-slate-400">Input Prompt / Document:</label>
+        <textarea
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="Ask a question, chat naturally, or paste document text..."
+          className="w-full h-32 bg-slate-900 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 resize-none"
+        />
+      </div>
 
+      {/* 4. Action Trigger Button (Now directly under Input) */}
+      <button
+        onClick={() => handleGenerate("General Chat")}
+        disabled={loading}
+        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-3 rounded-xl text-sm font-semibold transition"
+      >
+        {loading ? "Processing..." : "Summarize Document / Chat"}
+      </button>
+
+      {/* 5. Output Box & Export Actions */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
         <span className="text-xs font-semibold text-slate-400">Editable Output:</span>
         <textarea
@@ -225,14 +239,6 @@ export default function Home() {
           </button>
         </div>
       </div>
-
-      <button
-        onClick={() => handleGenerate("General Chat")}
-        disabled={loading}
-        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-3 rounded-xl text-sm font-semibold transition"
-      >
-        {loading ? "Processing..." : "Summarize Document / Chat"}
-      </button>
     </main>
   );
 }
