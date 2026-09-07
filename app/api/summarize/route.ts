@@ -4,6 +4,15 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const apiKey = process.env.GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(apiKey);
 
+// Self-healing fallback candidates ordered by preference
+const CANDIDATE_MODELS = [
+  "gemini-2.0-flash",
+  "gemini-2.5-flash",
+  "gemini-1.5-flash-latest",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+];
+
 export async function POST(req: Request) {
   try {
     if (!apiKey) {
@@ -14,12 +23,6 @@ export async function POST(req: Request) {
     }
 
     const { text, fileData, promptType, language } = await req.json();
-
-    // Explicitly target the stable v1 API version to fix 404 routing errors
-    const model = genAI.getGenerativeModel(
-      { model: "gemini-1.5-flash" },
-      { apiVersion: "v1" }
-    );
 
     const systemInstruction = `You are an interactive AI web assistant and document analyzer. 
 Answer questions, follow instructions, engage in natural conversation, and analyze uploaded content.
@@ -33,10 +36,28 @@ Context/Task: ${promptType || 'General Chat'}`;
       contents.push(fileData);
     }
 
-    const result = await model.generateContent(contents);
-    const responseText = result.response.text();
+    let lastError: any = null;
 
-    return NextResponse.json({ summary: responseText });
+    // Iterate through available candidate endpoints until one succeeds
+    for (const modelName of CANDIDATE_MODELS) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(contents);
+        const responseText = result.response.text();
+
+        if (responseText) {
+          return NextResponse.json({ summary: responseText, modelUsed: modelName });
+        }
+      } catch (err: any) {
+        lastError = err;
+        // Proceed to next model candidate if current one fails
+      }
+    }
+
+    return NextResponse.json(
+      { error: `API Key rejected all model candidates. Last error: ${lastError?.message || "Unknown error"}` },
+      { status: 500 }
+    );
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to process AI request" },
