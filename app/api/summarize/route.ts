@@ -1,54 +1,43 @@
-import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { NextResponse } from "next/server";
 
-const apiKey = process.env.GEMINI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(apiKey);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-// Stable production models
+// Active Gemini model fallbacks
 const MODELS = [
-  "gemini-1.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash-latest",
   "gemini-1.5-pro"
 ];
 
 export async function POST(req: Request) {
   try {
-    const { text, promptType, language } = await req.json();
+    const { text, promptType } = await req.json();
 
-    if (!text || !text.trim()) {
-      return NextResponse.json({ error: "Text content is required." }, { status: 400 });
+    if (!text) {
+      return NextResponse.json({ error: "No text provided" }, { status: 400 });
     }
 
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "GEMINI_API_KEY is missing from environment variables in Vercel." },
-        { status: 500 }
-      );
-    }
-
-    const prompt = `You are a professional document analysis assistant. Provide a clear, well-structured ${promptType || "summary"} in ${language || "English"} for the following content:\n\n${text}`;
-
-    const errorDetails: string[] = [];
+    let lastError = null;
 
     for (const modelName of MODELS) {
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
-
-        if (responseText) {
-          return NextResponse.json({ summary: responseText });
-        }
+        const result = await model.generateContent(`${promptType || "Summarize this"}:\n\n${text}`);
+        const responseText = await result.response.text();
+        
+        return NextResponse.json({ summary: responseText });
       } catch (err: any) {
-        console.error(`Failed request for model ${modelName}:`, err.message);
-        errorDetails.push(`[${modelName}]: ${err.message}`);
+        lastError = err?.message || String(err);
+        console.warn(`Model ${modelName} failed:`, lastError);
       }
     }
 
     return NextResponse.json(
-      { error: `All model attempts failed: ${errorDetails.join(" | ")}` },
+      { error: `All model attempts failed. Last error: ${lastError}` },
       { status: 500 }
     );
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
