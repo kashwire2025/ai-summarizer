@@ -3,11 +3,11 @@ import { NextResponse } from "next/server";
 
 const MODEL_FALLBACK_CHAIN = [
   "gemini-2.5-flash",
+  "gemini-2.0-flash",
   "gemini-1.5-flash",
-  "gemini-2.5-pro",
 ];
 
-async function generateWithRetry(genAI: any, modelName: string, contents: any[], maxRetries = 2) {
+async function generateWithRetry(genAI: any, modelName: string, contents: any[], maxRetries = 1) {
   let delay = 1000;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -36,20 +36,27 @@ export async function POST(req: Request) {
 
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
-      return NextResponse.json({ error: "GEMINI_API_KEY missing" }, { status: 500 });
+      return NextResponse.json({ error: "GEMINI_API_KEY environment variable is missing" }, { status: 500 });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const systemInstruction = promptType && promptType !== "General Chat"
-      ? `Perform document analysis (${promptType}) on the input provided:`
-      : `You are a helpful AI assistant. Analyze or answer questions regarding the provided input:`;
+      ? `Perform document analysis (${promptType}) on the provided input:`
+      : `You are a helpful AI assistant. Analyze and summarize the provided input:`;
 
-    // Construct prompt payload (supports text + binary base64 attachments)
     const contents: any[] = [systemInstruction];
-    if (fileData?.inlineData) {
-      contents.push({ inlineData: fileData.inlineData });
+
+    // Properly format base64 file attachment
+    if (fileData?.inlineData?.data) {
+      contents.push({
+        inlineData: {
+          data: fileData.inlineData.data,
+          mimeType: fileData.inlineData.mimeType || "application/pdf",
+        },
+      });
     }
-    if (text) {
+
+    if (text && !text.startsWith("[Attached File:")) {
       contents.push(text);
     }
 
@@ -60,11 +67,13 @@ export async function POST(req: Request) {
         if (responseText) return NextResponse.json({ summary: responseText });
       } catch (err: any) {
         lastError = err?.message || String(err);
+        console.warn(`Model ${modelName} failed:`, lastError);
       }
     }
 
-    return NextResponse.json({ error: "Servers busy. Retry shortly." }, { status: 503 });
+    // Return the actual underlying error instead of masking it
+    return NextResponse.json({ error: `API Error: ${lastError}` }, { status: 500 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: `Server Error: ${error.message}` }, { status: 500 });
   }
 }
