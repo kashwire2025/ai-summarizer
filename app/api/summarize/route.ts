@@ -7,15 +7,15 @@ export async function POST(req: Request) {
   try {
     const { text, fileData, promptType, language } = await req.json();
 
-    // Configured to gemini-1.5-pro for maximum reasoning performance
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    // Use active stable model endpoint
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const systemInstruction = `You are an interactive AI web assistant and document analyzer. 
-You answer questions, execute instructions, engage in natural chat, and analyze documents.
-CRITICAL MANDATE: You MUST respond ENTIRELY in the following language: "${language || 'English'}".
-Task/Prompt Context: ${promptType || 'General Chat'}`;
+Answer questions, follow instructions, engage in natural conversation, and analyze uploaded content.
+CRITICAL MANDATE: Respond ENTIRELY in this language: "${language || 'English'}".
+Context/Task: ${promptType || 'General Chat'}`;
 
-    const promptText = `${systemInstruction}\n\nUser Input / Document Text:\n${text || "Hello"}`;
+    const promptText = `${systemInstruction}\n\nUser Input / Document:\n${text || "Hello"}`;
 
     let contents: any[] = [promptText];
     if (fileData && fileData.inlineData) {
