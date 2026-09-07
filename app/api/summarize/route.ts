@@ -1,10 +1,11 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-const MODEL_FALLBACK_CHAIN = [
+// Fallback model chain ensuring standard Google API compatibility
+const API_MODELS = [
   "gemini-2.5-flash",
-  "gemini-2.5-pro",
   "gemini-1.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-pro",
 ];
 
 export async function POST(req: Request) {
@@ -17,44 +18,63 @@ export async function POST(req: Request) {
 
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
-      return NextResponse.json({ error: "GEMINI_API_KEY environment variable is missing" }, { status: 500 });
+      return NextResponse.json({ 
+        error: "GEMINI_API_KEY environment variable is missing. Please add GEMINI_API_KEY in Vercel Project Settings -> Environment Variables." 
+      }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
     const targetLang = language || "English";
-    const promptHeader = `[Instruction: Please respond in ${targetLang}. ${promptType && promptType !== "General Chat" ? `Perform analysis: ${promptType}` : "Provide a clear and concise response"}]`;
+    const promptHeader = `[Instruction: Respond in ${targetLang}. ${promptType && promptType !== "General Chat" ? `Perform analysis: ${promptType}` : "Analyze and answer concisely"}]`;
 
-    const promptParts: any[] = [];
+    const parts: any[] = [];
 
     if (fileData?.inlineData?.data) {
-      promptParts.push({
-        inlineData: {
+      parts.push({
+        inline_data: {
+          mime_type: fileData.inlineData.mimeType || "application/pdf",
           data: fileData.inlineData.data,
-          mimeType: fileData.inlineData.mimeType || "application/pdf",
         },
       });
     }
 
     if (text) {
-      promptParts.push(`${promptHeader}\n\n${text}`);
+      parts.push({ text: `${promptHeader}\n\n${text}` });
     } else {
-      promptParts.push(promptHeader);
+      parts.push({ text: promptHeader });
     }
 
     let lastError = "";
-    for (const modelName of MODEL_FALLBACK_CHAIN) {
+
+    // Standard Direct REST payload call prevents SDK model path mismatch errors
+    for (const model of API_MODELS) {
       try {
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(promptParts);
-        const responseText = await result.response.text();
-        if (responseText) return NextResponse.json({ summary: responseText });
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: parts,
+              },
+            ],
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          return NextResponse.json({ summary: data.candidates[0].content.parts[0].text });
+        } else if (data.error?.message) {
+          lastError = data.error.message;
+        }
       } catch (err: any) {
-        lastError = err?.message || String(err);
-        console.warn(`Model ${modelName} failed:`, lastError);
+        lastError = err.message || String(err);
       }
     }
 
-    return NextResponse.json({ error: `API Error: ${lastError}` }, { status: 500 });
+    return NextResponse.json({ error: `API Error: ${lastError || "All models failed to respond"}` }, { status: 500 });
   } catch (error: any) {
     return NextResponse.json({ error: `Server Error: ${error.message}` }, { status: 500 });
   }
