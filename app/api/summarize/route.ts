@@ -11,13 +11,14 @@ export async function POST(req: NextRequest) {
     const systemInstruction = `
 You are the AI Document Workbench assistant. Your primary task is to analyze, summarize, and extract insights from documents and user queries.
 
-STRICT GUIDELINES & FORMATTING RULES:
-1. Provide clean, professional, and well-structured markdown outputs.
-2. CRITICAL: NEVER output ASCII art, text boxes, visual tree diagrams made of characters (such as %, |, +, -, =, or # borders), or code blocks intended as drawings. 
-3. Represent all hierarchies, workflows, and policy frameworks using standard Markdown nested bullet lists or clean Markdown tables ONLY.
-4. CRITICAL: NEVER output Python code, ReportLab scripts, code snippets for file generation, or browser printing instructions (e.g., "Ctrl + P" or "Save as PDF"). The frontend workbench handles client-side PDF synthesis automatically.
-5. Keep the content focused entirely on the requested analysis, summary, executive summary, key actions, or topic discussion.
-6. Respond in the requested target language/locale (Language Code/Context: ${language || "en"}).
+STRICT FORMATTING RULES:
+1. Provide clean, professional markdown outputs.
+2. ABSOLUTELY NO LATEX: Do NOT use LaTeX math formulas or LaTeX syntax like $\\text{...}$. Write chemical formulas, numbers, and variables in plain text (e.g., PM2.5 instead of $\\text{PM}_{2.5}$, SO2 instead of $\\text{SO}_2$).
+3. ABSOLUTELY NO HTML TAGS: Do NOT output HTML tags anywhere in your response (e.g., do NOT write <br>, <div>, or <span>). Use standard markdown line breaks and bullet points.
+4. NO ASCII DRAWINGS: Do NOT output ASCII art, character-based box diagrams, or border strings made of %, =, -, #, or |.
+5. FOR TABLES & LISTS: Use clean markdown bullet points or standard Markdown tables without HTML tags inside cells.
+6. NO CODE GENERATION FOR FILES: Do NOT output Python, ReportLab scripts, or PDF creation code.
+7. Respond in the requested target language/locale (Language Code/Context: ${language || "en"}).
 `;
 
     const model = genAI.getGenerativeModel({
@@ -36,7 +37,7 @@ STRICT GUIDELINES & FORMATTING RULES:
     if (fileData) {
       currentMessageParts.push(fileData);
     }
-    
+
     const userPrompt = text || promptType || "Please summarize the provided context.";
     currentMessageParts.push({ text: userPrompt });
 
@@ -48,7 +49,15 @@ STRICT GUIDELINES & FORMATTING RULES:
     const result = await model.generateContent({ contents });
     let responseText = result.response.text();
 
-    // Sanitizer: Remove any residual ASCII box/border lines before returning text
+    // Sanitizer 1: Strip LaTeX \text{...} wrappers to plain text
+    responseText = responseText.replace(/\$\\text\{([^}]+)\}_\{?([^}$]+)\}?\$/g, "$1$2");
+    responseText = responseText.replace(/\$\\text\{([^}]+)\}\$/g, "$1");
+    responseText = responseText.replace(/\$([^$]+)\$/g, "$1");
+
+    // Sanitizer 2: Convert literal <br> tags into clean spaces/newlines
+    responseText = responseText.replace(/<br\s*\/?>/gi, " ");
+
+    // Sanitizer 3: Remove repetitive ASCII border lines
     responseText = responseText.replace(/[%=\-#*|]{4,}/g, "");
 
     return NextResponse.json({ reply: responseText });
