@@ -174,28 +174,93 @@ export default function AIWorkbench() {
     downloadFile(htmlContent, "workbench-export.doc", "application/msword");
   };
 
-  const exportAsPdf = (targetText = getFullContentText()) => {
+    const exportAsPdf = (targetText = getFullContentText()) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
-    printWindow.document.write(`
+
+    const parseMarkdownForPrint = (str: string) => {
+      return str
+        .replace(/^### (.*$)/gim, '<h3 style="font-size: 15px; font-weight: bold; margin: 12px 0 6px 0; color: #1e293b;">$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2 style="font-size: 17px; font-weight: bold; margin: 14px 0 8px 0; color: #0f172a;">$1</h2>')
+        .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #0f172a;">$1</strong>')
+        .replace(/^\* (.*$)/gim, '<li style="margin-left: 18px; list-style-type: disc;">$1</li>')
+        .replace(/\n\n/g, '<br/><br/>')
+        .replace(/\n/g, '<br/>');
+    };
+
+    const formattedMessages = messages.map((m) => {
+      const isUser = m.role === "user";
+      const parsedContent = parseMarkdownForPrint(m.content);
+      return \`
+        <div style="
+          margin-bottom: 12px; 
+          padding: 12px 14px; 
+          border-radius: 8px; 
+          background-color: \${isUser ? "#f1f5f9" : "#ffffff"}; 
+          border: 1px solid \${isUser ? "#cbd5e1" : "#e2e8f0"};
+          page-break-inside: avoid;
+        ">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 10px; font-weight: bold; color: \${isUser ? "#0284c7" : "#475569"}; text-transform: uppercase;">
+            <span>\${isUser ? "USER" : "AI ASSISTANT"}</span>
+            <span style="float: right;">\${m.timestamp}</span>
+          </div>
+          <div style="font-size: 12px; line-height: 1.5; color: #1e293b;">
+            \${parsedContent}
+          </div>
+        </div>
+      \`;
+    }).join("");
+
+    printWindow.document.write(\`
+      <!DOCTYPE html>
       <html>
         <head>
-          <title>Export PDF</title>
+          <title>AI Workbench Export</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; color: #111; line-height: 1.6; }
-            pre { white-space: pre-wrap; font-family: inherit; }
+            @page { size: letter; margin: 15mm; }
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+              color: #0f172a; 
+              background: #fff;
+              margin: 0;
+              padding: 0;
+            }
+            .header {
+              border-bottom: 2px solid #2563eb;
+              padding-bottom: 8px;
+              margin-bottom: 16px;
+            }
+            .header h1 {
+              font-size: 18px;
+              margin: 0;
+              color: #2563eb;
+            }
+            .header p {
+              font-size: 10px;
+              color: #64748b;
+              margin: 4px 0 0 0;
+            }
           </style>
         </head>
         <body>
-          <h2>AI Workbench Export</h2>
-          <hr/>
-          <pre>${targetText}</pre>
-          <script>window.onload = function() { window.print(); window.close(); }</script>
+          <div class="header">
+            <h1>AI Document Workbench Export</h1>
+            <p>Generated on \${new Date().toLocaleString()}</p>
+          </div>
+          <div>\${formattedMessages || parseMarkdownForPrint(targetText)}</div>
+          <script>
+            window.onload = function() { 
+              window.print(); 
+              window.close(); 
+            };
+          </script>
         </body>
       </html>
-    `);
+    \`);
     printWindow.document.close();
   };
+
 
   const exportAsPng = (targetText = getFullContentText()) => {
     const canvas = document.createElement("canvas");
