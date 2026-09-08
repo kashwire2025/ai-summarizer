@@ -1,95 +1,119 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const apiKey = process.env.GEMINI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(apiKey);
+const systemInstruction = `
+You are the AI Document Workbench assistant.
+STRICT FORMATTING REQUIREMENTS:
+1. DO NOT use Markdown symbols anywhere in your response (** , *, #, ##, ###, ---).
+2. Format titles and sections using clean line breaks and UPPERCASE text.
+3. Present lists using simple numbers (1., 2.) or standard dashes (-).
+4. ABSOLUTELY NO LATEX, HTML, OR PIPE TABLES.
+5. Output clean plain text.
+`;
+
+// Provider 1: Groq API (Free Tier: ~14,400 req/day)
+async function callGroq(prompt: string) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error("Missing GROQ_API_KEY");
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "llama-3.1-8b-instant",
+      messages: [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.5,
+    }),
+  });
+
+  if (!res.ok) throw new Error(`Groq API Error: ${res.status}`);
+  const data = await res.json();
+  return data.choices[0]?.message?.content;
+}
+
+// Provider 2: OpenRouter Free Models
+async function callOpenRouter(prompt: string) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("Missing OPENROUTER_API_KEY");
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "meta-llama/llama-3.1-8b-instruct:free",
+      messages: [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: prompt },
+      ],
+    }),
+  });
+
+  if (!res.ok) throw new Error(`OpenRouter API Error: ${res.status}`);
+  const data = await res.json();
+  return data.choices[0]?.message?.content;
+}
+
+// Provider 3: Gemini API Backup
+async function callGemini(prompt: string) {
+  const apiKey = process.env.GEMINI_API_KEY || "";
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: "gemini-3.6-flash",
+    systemInstruction,
+  });
+
+  const result = await model.generateContent(prompt);
+  return result.response.text();
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { text, history, fileData, promptType, language } = await req.json();
+    const { text, promptType } = await req.json();
+    const prompt = text || promptType || "Please summarize the provided text.";
 
-    const systemInstruction = `
-You are the AI Document Workbench assistant.
+    let reply = "";
 
-STRICT FORMATTING REQUIREMENTS:
-1. DO NOT use Markdown symbols anywhere in your response. No asterisks (** or *), no header hashes (#, ##, ###), no underscores, and no horizontal rules (---).
-2. Format titles and sections using clean line breaks and UPPERCASE text.
-3. Present lists using simple numbers (1., 2., 3.) or bullet points with standard dashes (-).
-4. ABSOLUTELY NO LATEX ($\text{...}$), HTML (<br>), OR PIPE TABLES (|).
-5. Output clean, readable plain text suitable for standard display boxes.
-6. Language: ${language || "en"}.
-`;
+    // Array of AI Provider functions to attempt in order
+    const providers = [
+      { name: "Groq", fn: () => callGroq(prompt) },
+      { name: "OpenRouter", fn: () => callOpenRouter(prompt) },
+      { name: "Gemini", fn: () => callGemini(prompt) },
+    ];
 
-    // Use standard stable flash model
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      systemInstruction,
-    });
-
-    const formattedHistory = (history || []).map((msg: any) => ({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }],
-    }));
-
-    const contents: any[] = [...formattedHistory];
-
-    const currentMessageParts: any[] = [];
-    if (fileData) {
-      currentMessageParts.push(fileData);
-    }
-
-    const userPrompt = text || promptType || "Please summarize the provided context.";
-    currentMessageParts.push({ text: userPrompt });
-
-    contents.push({
-      role: "user",
-      parts: currentMessageParts,
-    });
-
-    // Automatic retry logic with exponential backoff for 429 Rate Limits
-    let result;
-    let retries = 3;
-    let delay = 3000;
-
-    while (retries > 0) {
+    for (const provider of providers) {
       try {
-        result = await model.generateContent({ contents });
-        break;
+        console.log(`Attempting request with: ${provider.name}`);
+        reply = await provider.fn();
+        if (reply) break; // Exit loop on successful output
       } catch (err: any) {
-        if (err?.status === 429 || err?.message?.includes("429") || err?.message?.includes("Quota exceeded")) {
-          retries--;
-          if (retries === 0) throw err;
-          await new Promise((res) => setTimeout(res, delay));
-          delay *= 2;
-        } else {
-          throw err;
-        }
+        console.warn(`${provider.name} failed (${err.message}). Trying next AI...`);
       }
     }
 
-    let responseText = result.response.text();
-
-    // Regex Sanitizer: Strip residual markdown symbols
-    responseText = responseText.replace(/^#{1,6}\s*/gm, "");
-    responseText = responseText.replace(/\*\*(.*?)\*\*/g, "$1");
-    responseText = responseText.replace(/\*(.*?)\*/g, "$1");
-    responseText = responseText.replace(/^---$/gm, "");
-    responseText = responseText.replace(/\$\\text\{([^}]+)\}\$/g, "$1");
-    responseText = responseText.replace(/<br\s*\/?>/gi, " ");
-
-    return NextResponse.json({ reply: responseText });
-  } catch (error: any) {
-    console.error("Summarize API Error:", error);
-
-    // Return a clean text reply on rate limits instead of raw Google JSON dumps
-    if (error?.status === 429 || error?.message?.includes("429") || error?.message?.includes("Quota exceeded")) {
+    if (!reply) {
       return NextResponse.json({
-        reply: "API Rate limit reached. Please wait 10 to 15 seconds before trying again."
+        reply: "All free AI providers are currently rate-limited. Please wait 10 seconds and try again."
       });
     }
 
+    // Clean residual formatting
+    reply = reply.replace(/^#{1,6}\s*/gm, "");
+    reply = reply.replace(/\*\*(.*?)\*\*/g, "$1");
+    reply = reply.replace(/\*(.*?)\*/g, "$1");
+
+    return NextResponse.json({ reply });
+  } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || "Failed to generate summary." },
+      { error: error?.message || "Failed to process request." },
       { status: 500 }
     );
   }
