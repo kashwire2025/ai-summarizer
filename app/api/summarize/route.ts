@@ -13,8 +13,10 @@ export async function POST(req: Request) {
 
     const { text, history, fileData, promptType, language } = await req.json();
 
-    // 1. Query Google REST API directly to discover active models for this API key
-    let selectedModel = "gemini-1.5-flash"; // default fallback
+    // Target gemini-3.6-flash as default
+    let selectedModel = "gemini-3.6-flash";
+
+    // 1. Query Google REST API directly to verify model availability on this key
     try {
       const listRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
@@ -26,14 +28,17 @@ export async function POST(req: Request) {
           .map((m: any) => m.name.replace(/^models\//, ""));
 
         if (validModels.length > 0) {
-          // Prefer flash or pro model available to the key
+          // Priority selection order: gemini-3.6-flash -> any 3.6 model -> flash -> pro -> fallback
           selectedModel =
-            validModels.find((m: string) => m.includes("flash") || m.includes("pro")) ||
+            validModels.find((m: string) => m === "gemini-3.6-flash") ||
+            validModels.find((m: string) => m.includes("3.6")) ||
+            validModels.find((m: string) => m.includes("flash")) ||
+            validModels.find((m: string) => m.includes("pro")) ||
             validModels[0];
         }
       }
     } catch (err) {
-      console.warn("Model discovery fallback used");
+      console.warn("Model discovery fallback used, using gemini-3.6-flash default");
     }
 
     // 2. Build system instructions and continuous chat context
@@ -65,7 +70,7 @@ Task Context: ${promptType || 'General Conversation'}`;
       });
     }
 
-    // 3. Make direct REST API call to discovered model endpoint
+    // 3. Make direct REST API call to gemini-3.6-flash / selected model endpoint
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
 
     const aiRes = await fetch(apiUrl, {
