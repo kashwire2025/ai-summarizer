@@ -2,33 +2,10 @@
 
 import React, { useState, useRef, useEffect } from "react";
 
-// 25 Languages Dictionary covering all interface buttons and labels
 const LOCALIZATION_DICT: Record<string, Record<string, string>> = {
-  en: { title: "AI Document Workbench", chooseFile: "Choose File", execSummary: "Executive Summary", keyActions: "Key Action Items", takeaways: "Top Takeaways", trends: "Analyze Trends", placeholder: "Type command, query, or edit context...", sendBtn: "Summarize / Chat", clearBtn: "Clear Workbench", exportPdf: "Export PDF", exportPng: "Export PNG", exportDoc: "Export DOC", exportTxt: "Export TXT", exportMd: "Export MD", exportSelected: "Export Highlighted Text" },
-  es: { title: "Mesa de Trabajo Documental IA", chooseFile: "Elegir Archivo", execSummary: "Resumen Ejecutivo", keyActions: "Puntos Clave de Acción", takeaways: "Conclusiones Principales", trends: "Analizar Tendencias", placeholder: "Escriba un comando o consulta...", sendBtn: "Resumir / Chatear", clearBtn: "Limpiar Mesa", exportPdf: "Exportar PDF", exportPng: "Exportar PNG", exportDoc: "Exportar DOC", exportTxt: "Exportar TXT", exportMd: "Exportar MD", exportSelected: "Exportar Texto Seleccionado" },
-  fr: { title: "Espace de Travail IA Documentaire", chooseFile: "Choisir Fichier", execSummary: "Résumé Exécutif", keyActions: "Actions Clés", takeaways: "Points Essentiels", trends: "Analyser Tendances", placeholder: "Saisissez une commande ou question...", sendBtn: "Résumer / Discuter", clearBtn: "Effacer Tout", exportPdf: "Exporter PDF", exportPng: "Exporter PNG", exportDoc: "Exporter DOC", exportTxt: "Exporter TXT", exportMd: "Exporter MD", exportSelected: "Exporter Texte Sélectionné" },
-  de: { title: "KI Dokumenten-Arbeitsbereich", chooseFile: "Datei Auswählen", execSummary: "Zusammenfassung", keyActions: "Wichtige Aktionen", takeaways: "Wichtigste Erkenntnisse", trends: "Trends Analysieren", placeholder: "Befehl oder Frage eingeben...", sendBtn: "Zusammenfassen / Chat", clearBtn: "Bereich Leeren", exportPdf: "PDF Exportieren", exportPng: "PNG Exportieren", exportDoc: "DOC Exportieren", exportTxt: "TXT Exportieren", exportMd: "MD Exportieren", exportSelected: "Markierten Text Exportieren" },
-  zh: { title: "AI 文档智能工作台", chooseFile: "选择文件", execSummary: "执行摘要", keyActions: "关键行动项", takeaways: "核心要点", trends: "趋势分析", placeholder: "输入命令、问题或修改意见...", sendBtn: "生成摘要 / 对话", clearBtn: "清空工作台", exportPdf: "导出 PDF", exportPng: "导出 PNG", exportDoc: "导出 DOC", exportTxt: "导出 TXT", exportMd: "导出 MD", exportSelected: "导出选中文本" },
-  ja: { title: "AI ドキュメント ワークベンチ", chooseFile: "ファイルを選択", execSummary: "要約", keyActions: "主要アクション", takeaways: "重要なポイント", trends: "トレンド分析", placeholder: "指示や質問を入力...", sendBtn: "要約 / チャット", clearBtn: "消去", exportPdf: "PDF出力", exportPng: "PNG出力", exportDoc: "DOC出力", exportTxt: "TXT出力", exportMd: "MD出力", exportSelected: "選択テキストを出力" },
-  ar: { title: "منصة المستندات بالذكاء الاصطناعي", chooseFile: "اختر ملف", execSummary: "ملخص تنفيذي", keyActions: "إجراءات رئيسية", takeaways: "أهم النقاط", trends: "تحليل الاتجاهات", placeholder: "اكتب أمراً أو استفساراً...", sendBtn: "تلخيص / محادثة", clearBtn: "مسح الكل", exportPdf: "تصدير PDF", exportPng: "تصدير PNG", exportDoc: "تصدير DOC", exportTxt: "تصدير TXT", exportMd: "تصدير MD", exportSelected: "تصدير النص المحدد" },
-  pt: { title: "Bancada de Documentos IA", chooseFile: "Escolher Ficheiro", execSummary: "Resumo Executivo", keyActions: "Ações Chave", takeaways: "Principais Conclusões", trends: "Analisar Tendências", placeholder: "Digite um comando ou dúvida...", sendBtn: "Resumir / Conversar", clearBtn: "Limpar Tudo", exportPdf: "Exportar PDF", exportPng: "Exportar PNG", exportDoc: "Exportar DOC", exportTxt: "Exportar TXT", exportMd: "Exportar MD", exportSelected: "Exportar Texto Selecionado" },
-  ru: { title: "ИИ Рабочий Стол Документов", chooseFile: "Выбрать Файл", execSummary: "Краткий Обзор", keyActions: "Главные Действия", takeaways: "Ключевые Выводы", trends: "Анализ Трендов", placeholder: "Введите команду или вопрос...", sendBtn: "Суммаризовать / Чат", clearBtn: "Очистить", exportPdf: "Экспорт PDF", exportPng: "Экспорт PNG", exportDoc: "Экспорт DOC", exportTxt: "Экспорт TXT", exportMd: "Экспорт MD", exportSelected: "Экспорт Выделенного Текста" },
-  hi: { title: "एआई दस्तावेज़ वर्कबेंच", chooseFile: "फ़ाइल चुनें", execSummary: "कार्यकारी सारांश", keyActions: "प्रमुख कार्रवाई", takeaways: "मुख्य निष्कर्ष", trends: "रूझान विश्लेषण", placeholder: "कमांड या प्रश्न टाइप करें...", sendBtn: "सारांश / चैट", clearBtn: "साफ़ करें", exportPdf: "PDF निर्यात", exportPng: "PNG निर्यात", exportDoc: "DOC निर्यात", exportTxt: "TXT निर्यात", exportMd: "MD निर्यात", exportSelected: "चयनित पाठ निर्यात करें" },
-  ko: { title: "AI 문서 워크벤치", chooseFile: "파일 선택", execSummary: "요약 보고서", keyActions: "핵심 실행 항목", takeaways: "주요 시사점", trends: "트렌드 분석", placeholder: "명령어나 질문을 입력하세요...", sendBtn: "요약 / 대화", clearBtn: "초기화", exportPdf: "PDF 내보내기", exportPng: "PNG 내보내기", exportDoc: "DOC 내보내기", exportTxt: "TXT 내보내기", exportMd: "MD 내보내기", exportSelected: "선택한 텍스트 내보내기" },
-  it: { title: "Banco di Lavoro Documenti IA", chooseFile: "Scegli File", execSummary: "Sintesi Esecutiva", keyActions: "Azioni Chiave", takeaways: "Punti Chiave", trends: "Analisi Tendenze", placeholder: "Digita un comando o domanda...", sendBtn: "Riassumi / Chat", clearBtn: "Pulisci", exportPdf: "Esporta PDF", exportPng: "Esporta PNG", exportDoc: "Esporta DOC", exportTxt: "Esporta TXT", exportMd: "Esporta MD", exportSelected: "Esporta Testo Selezionato" },
-  nl: { title: "AI Documenten Werkbank", chooseFile: "Kies Bestand", execSummary: "Managementsamenvatting", keyActions: "Belangrijkste Acties", takeaways: "Belangrijkste Inzichten", trends: "Trends Analyseren", placeholder: "Typ een opdracht of vraag...", sendBtn: "Samenvatten / Chat", clearBtn: "Wis Alles", exportPdf: "Exporteren PDF", exportPng: "Exporteren PNG", exportDoc: "Exporteren DOC", exportTxt: "Exporteren TXT", exportMd: "Exporteren MD", exportSelected: "Geselecteerde Tekst Exporteren" },
-  tr: { title: "Yapay Zeka Belge Çalışma Alanı", chooseFile: "Dosya Seç", execSummary: "Yönetici Özeti", keyActions: "Önemli Eylemler", takeaways: "Ana Çıkarımlar", trends: "Trend Analizi", placeholder: "Komut veya soru yazın...", sendBtn: "Özetle / Sohbet", clearBtn: "Temizle", exportPdf: "PDF Dışa Aktar", exportPng: "PNG Dışa Aktar", exportDoc: "DOC Dışa Aktar", exportTxt: "TXT Dışa Aktar", exportMd: "MD Dışa Aktar", exportSelected: "Seçili Metni Dışa Aktar" },
-  pl: { title: "Pulpit Dokumentów AI", chooseFile: "Wybierz Plik", execSummary: "Podsumowanie Menedżerskie", keyActions: "Kluczowe Działania", takeaways: "Główne Wnioski", trends: "Analiza Trendów", placeholder: "Wpisz polecenie lub pytanie...", sendBtn: "Podsumuj / Czat", clearBtn: "Wyczyść", exportPdf: "Eksportuj PDF", exportPng: "Eksportuj PNG", exportDoc: "Eksportuj DOC", exportTxt: "Eksportuj TXT", exportMd: "Eksportuj MD", exportSelected: "Eksportuj Zaznaczony Tekst" },
-  vi: { title: "Bàn Làm Việc Tài Liệu AI", chooseFile: "Chọn Tệp", execSummary: "Tóm Tắt Tổng Quan", keyActions: "Hành Động Chính", takeaways: "Điểm Cốt Lõi", trends: "Phân Tích Xu Hướng", placeholder: "Nhập lệnh hoặc câu hỏi...", sendBtn: "Tóm Tắt / Trò Chuyện", clearBtn: "Xóa Sạch", exportPdf: "Xuất PDF", exportPng: "Xuất PNG", exportDoc: "Xuất DOC", exportTxt: "Xuất TXT", exportMd: "Xuất MD", exportSelected: "Xuất Văn Bản Đã Chọn" },
-  th: { title: "พื้นที่ทำงานเอกสาร AI", chooseFile: "เลือกไฟล์", execSummary: "สรุปสำหรับผู้บริหาร", keyActions: "การดำเนินการสำคัญ", takeaways: "ข้อสรุปหลัก", trends: "วิเคราะห์แนวโน้ม", placeholder: "พิมพ์คำสั่งหรือคำถาม...", sendBtn: "สรุป / แชท", clearBtn: "ล้างข้อมูล", exportPdf: "ส่งออก PDF", exportPng: "ส่งออก PNG", exportDoc: "ส่งออก DOC", exportTxt: "ส่งออก TXT", exportMd: "ส่งออก MD", exportSelected: "ส่งออกข้อความที่เลือก" },
-  id: { title: "Lembar Kerja Dokumen AI", chooseFile: "Pilih Berkas", execSummary: "Ringkasan Eksekutif", keyActions: "Tindakan Utama", takeaways: "Poin Penting", trends: "Analisis Tren", placeholder: "Ketik perintah atau pertanyaan...", sendBtn: "Ringkas / Obrolan", clearBtn: "Bersihkan", exportPdf: "Ekspor PDF", exportPng: "Ekspor PNG", exportDoc: "Ekspor DOC", exportTxt: "Ekspor TXT", exportMd: "Ekspor MD", exportSelected: "Ekspor Teks Terpilih" },
-  sw: { title: "Uwanja wa Kazi wa Nyaraka za AI", chooseFile: "Chagua Faili", execSummary: "Muhtasari Mkuu", keyActions: "Hatua Muhimu", takeaways: "Mambo Makuu", trends: "Changanua Mwelekeo", placeholder: "Andika amri au swali...", sendBtn: "Muhtasari / Mazungumzo", clearBtn: "Safisha", exportPdf: "Pakua PDF", exportPng: "Pakua PNG", exportDoc: "Pakua DOC", exportTxt: "Pakua TXT", exportMd: "Pakua MD", exportSelected: "Pakua Maandishi Yaliyochaguliwa" },
-  am: { title: "የኤአይ ሰነድ ሥራ ቦታ", chooseFile: "ፋይል ይምረጡ", execSummary: "ዋና ማጠቃለያ", keyActions: "ዋና እርምጃዎች", takeaways: "ቁልፍ ነጥቦች", trends: "ትሬንድ ትንተና", placeholder: "ትዕዛዝ ወይም ጥያቄ ይጻፉ...", sendBtn: "ማጠቃለያ / ውይይት", clearBtn: "አጽዳ", exportPdf: "PDF ወደ ውጭ ላክ", exportPng: "PNG ወደ ውጭ ላክ", exportDoc: "DOC ወደ ውጭ ላክ", exportTxt: "TXT ወደ ውጭ ላክ", exportMd: "MD ወደ ውጭ ላክ", exportSelected: "የተመረጠውን ጽሑፍ ላክ" },
-  yo: { title: "Agbègbè Iṣẹ́ Àkọsílẹ̀ AI", chooseFile: "Yan File", execSummary: "Àkópọ̀ Aṣojú", keyActions: "Àwọn Ìgbésẹ̀ Pataki", takeaways: "Àwọn Òtítọ́ Kókó", trends: "Ṣàyẹ̀wò Àwọn Àṣà", placeholder: "Kọ àṣẹ tàbí ìbéèrè rẹ...", sendBtn: "Ṣàkópọ̀ / Sọ̀rọ̀", clearBtn: "Nu Kúrò", exportPdf: "Jadade PDF", exportPng: "Jadade PNG", exportDoc: "Jadade DOC", exportTxt: "Jadade TXT", exportMd: "Jadade MD", exportSelected: "Jadade Ọ̀rọ̀ Aṣàyàn" },
-  ha: { title: "Dandalin Aiki na Takardun AI", chooseFile: "Zaɓi Fayil", execSummary: "Takaitaccen Bayani", keyActions: "Matakan Aiki", takeaways: "Mabuɗan Bayanai", trends: "Binciken Hanyoyi", placeholder: "Rubuta umarni ko tambaya...", sendBtn: "Takaice / Tattaunawa", clearBtn: "Goge Duka", exportPdf: "Fitar da PDF", exportPng: "Fitar da PNG", exportDoc: "Fitar da DOC", exportTxt: "Fitar da TXT", exportMd: "Fitar da MD", exportSelected: "Fitar da Zaɓaɓɓen Rubutu" },
-  bn: { title: "এআই ডকুমেন্ট ওয়ার্কবেঞ্চ", chooseFile: "ফাইল নির্বাচন করুন", execSummary: "নির্বাহী সারসংক্ষেপ", keyActions: "মূল পদক্ষেপ", takeaways: "প্রধান সারসংক্ষেপ", trends: "ট্রেন্ড বিশ্লেষণ", placeholder: "কমান্ড বা প্রশ্ন লিখুন...", sendBtn: "সারসংক্ষেপ / চ্যাট", clearBtn: "পরিষ্কার করুন", exportPdf: "PDF এক্সপোর্ট", exportPng: "PNG এক্সপোর্ট", exportDoc: "DOC এক্সপোর্ট", exportTxt: "TXT এক্সপোর্ট", exportMd: "MD এক্সপোর্ট", exportSelected: "সিলেক্ট করা লেখা এক্সপোর্ট" },
-  ur: { title: "اے آئی دستاویز ورک بینچ", chooseFile: "فائل منتخب کریں", execSummary: "ایگزیکٹو خلاصہ", keyActions: "اہم اقدامات", takeaways: "اہم نتائج", trends: "رجحانات کا تجزیہ", placeholder: "حکم یا سوال تحریر کریں...", sendBtn: "خلاصہ / بات چیت", clearBtn: "صاف کریں", exportPdf: "PDF ایکسپورٹ", exportPng: "PNG ایکسپورٹ", exportDoc: "DOC ایکسپورٹ", exportTxt: "TXT ایکسپورٹ", exportMd: "MD ایکسپورٹ", exportSelected: "منتخب متن ایکسپورٹ کریں" },
-  fa: { title: "میز کار اسناد هوش مصنوعی", chooseFile: "انتخاب فایل", execSummary: "خلاصه مدیریتی", keyActions: "اقدامات کلیدی", takeaways: "نکات برجسته", trends: "تحلیل روندها", placeholder: "دستور یا سوال خود را بنویسید...", sendBtn: "خلاصه / گفتگو", clearBtn: "پاکسازی", exportPdf: "خروجی PDF", exportPng: "خروجی PNG", exportDoc: "خروجی DOC", exportTxt: "خروجی TXT", exportMd: "خروجی MD", exportSelected: "خروجی متن انتخاب شده" },
+  en: { title: "AI Document Workbench", chooseFile: "Choose File", execSummary: "Executive Summary", keyActions: "Key Action Items", takeaways: "Top Takeaways", trends: "Analyze Trends", placeholder: "Type command, query, or edit context...", sendBtn: "Summarize / Chat", clearBtn: "Clear Workbench", exportPdf: "Export Full Chat PDF", exportPng: "Export PNG", exportDoc: "Export Full DOC", exportTxt: "Export Full TXT", exportMd: "Export Full MD", exportSelected: "Export Highlighted Text" },
+  es: { title: "Mesa de Trabajo Documental IA", chooseFile: "Elegir Archivo", execSummary: "Resumen Ejecutivo", keyActions: "Puntos Clave de Acción", takeaways: "Conclusiones Principales", trends: "Analizar Tendencias", placeholder: "Escriba un comando o consulta...", sendBtn: "Resumir / Chatear", clearBtn: "Limpiar Mesa", exportPdf: "Exportar PDF Completo", exportPng: "Exportar PNG", exportDoc: "Exportar DOC Completo", exportTxt: "Exportar TXT Completo", exportMd: "Exportar MD Completo", exportSelected: "Exportar Texto Seleccionado" },
+  fr: { title: "Espace de Travail IA Documentaire", chooseFile: "Choisir Fichier", execSummary: "Résumé Exécutif", keyActions: "Actions Clés", takeaways: "Points Essentiels", trends: "Analyser Tendances", placeholder: "Saisissez une commande ou question...", sendBtn: "Résumer / Discuter", clearBtn: "Effacer Tout", exportPdf: "Exporter PDF Complet", exportPng: "Exporter PNG", exportDoc: "Exporter DOC Complet", exportTxt: "Exporter TXT Complet", exportMd: "Exporter MD Complet", exportSelected: "Exporter Texte Sélectionné" },
 };
 
 interface Message {
@@ -50,7 +27,6 @@ export default function AIWorkbench() {
 
   const labels = LOCALIZATION_DICT[lang] || LOCALIZATION_DICT["en"];
 
-  // Auto-scroll output box on new message
   useEffect(() => {
     if (outputBoxRef.current) {
       outputBoxRef.current.scrollTop = outputBoxRef.current.scrollHeight;
@@ -161,106 +137,89 @@ export default function AIWorkbench() {
     return messages.map((m) => `[${m.role.toUpperCase()} - ${m.timestamp}]\n${m.content}\n`).join("\n---\n\n");
   };
 
-  const exportAsTxt = (targetText = getFullContentText()) => {
-    downloadFile(targetText, "workbench-export.txt", "text/plain;charset=utf-8");
+  // Parses Markdown into HTML for clean printing
+  const parseMarkdownForPrint = (str: string) => {
+    return str
+      .replace(/^### (.*$)/gim, '<h3 style="font-size: 15px; font-weight: bold; margin: 12px 0 6px 0; color: #1e293b;">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 style="font-size: 17px; font-weight: bold; margin: 14px 0 8px 0; color: #0f172a;">$1</h2>')
+      .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #0f172a;">$1</strong>')
+      .replace(/^\* (.*$)/gim, '<li style="margin-left: 18px; list-style-type: disc;">$1</li>')
+      .replace(/\n\n/g, '<br/><br/>')
+      .replace(/\n/g, '<br/>');
   };
 
-  const exportAsMd = (targetText = getFullContentText()) => {
-    downloadFile(targetText, "workbench-export.md", "text/markdown;charset=utf-8");
-  };
-
-  const exportAsDoc = (targetText = getFullContentText()) => {
-    const htmlContent = `<html><head><meta charset='utf-8'></head><body><pre style="font-family:sans-serif; white-space:pre-wrap;">${targetText}</pre></body></html>`;
-    downloadFile(htmlContent, "workbench-export.doc", "application/msword");
-  };
-
-    const exportAsPdf = (targetText = getFullContentText()) => {
+  // Fixed PDF exporter: exports ONLY the specified text when provided
+  const exportAsPdf = (targetText?: string, isFullChat: boolean = false) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
-    const parseMarkdownForPrint = (str: string) => {
-      return str
-        .replace(/^### (.*$)/gim, '<h3 style="font-size: 15px; font-weight: bold; margin: 12px 0 6px 0; color: #1e293b;">$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2 style="font-size: 17px; font-weight: bold; margin: 14px 0 8px 0; color: #0f172a;">$1</h2>')
-        .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #0f172a;">$1</strong>')
-        .replace(/^\* (.*$)/gim, '<li style="margin-left: 18px; list-style-type: disc;">$1</li>')
-        .replace(/\n\n/g, '<br/><br/>')
-        .replace(/\n/g, '<br/>');
-    };
+    let bodyContent = "";
 
-    const formattedMessages = messages.map((m) => {
-      const isUser = m.role === "user";
-      const parsedContent = parseMarkdownForPrint(m.content);
-      return \`
-        <div style="
-          margin-bottom: 12px; 
-          padding: 12px 14px; 
-          border-radius: 8px; 
-          background-color: \${isUser ? "#f1f5f9" : "#ffffff"}; 
-          border: 1px solid \${isUser ? "#cbd5e1" : "#e2e8f0"};
-          page-break-inside: avoid;
-        ">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 10px; font-weight: bold; color: \${isUser ? "#0284c7" : "#475569"}; text-transform: uppercase;">
-            <span>\${isUser ? "USER" : "AI ASSISTANT"}</span>
-            <span style="float: right;">\${m.timestamp}</span>
+    if (isFullChat) {
+      bodyContent = messages.map((m) => {
+        const isUser = m.role === "user";
+        return `
+          <div style="margin-bottom: 12px; padding: 12px 14px; border-radius: 8px; background-color: ${isUser ? "#f1f5f9" : "#ffffff"}; border: 1px solid ${isUser ? "#cbd5e1" : "#e2e8f0"}; page-break-inside: avoid;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 10px; font-weight: bold; color: ${isUser ? "#0284c7" : "#475569"}; text-transform: uppercase;">
+              <span>${isUser ? "USER" : "AI ASSISTANT"}</span>
+              <span style="float: right;">${m.timestamp}</span>
+            </div>
+            <div style="font-size: 12px; line-height: 1.5; color: #1e293b;">
+              ${parseMarkdownForPrint(m.content)}
+            </div>
           </div>
-          <div style="font-size: 12px; line-height: 1.5; color: #1e293b;">
-            \${parsedContent}
-          </div>
+        `;
+      }).join("");
+    } else {
+      const textToExport = targetText || (messages.length > 0 ? messages[messages.length - 1].content : "");
+      bodyContent = `
+        <div style="padding: 16px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 12px; line-height: 1.6; color: #1e293b;">
+          ${parseMarkdownForPrint(textToExport)}
         </div>
-      \`;
-    }).join("");
+      `;
+    }
 
-    printWindow.document.write(\`
+    printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
           <title>AI Workbench Export</title>
           <style>
             @page { size: letter; margin: 15mm; }
-            body { 
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-              color: #0f172a; 
-              background: #fff;
-              margin: 0;
-              padding: 0;
-            }
-            .header {
-              border-bottom: 2px solid #2563eb;
-              padding-bottom: 8px;
-              margin-bottom: 16px;
-            }
-            .header h1 {
-              font-size: 18px;
-              margin: 0;
-              color: #2563eb;
-            }
-            .header p {
-              font-size: 10px;
-              color: #64748b;
-              margin: 4px 0 0 0;
-            }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; background: #fff; margin: 0; padding: 0; }
+            .header { border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 16px; }
+            .header h1 { font-size: 18px; margin: 0; color: #2563eb; }
+            .header p { font-size: 10px; color: #64748b; margin: 4px 0 0 0; }
           </style>
         </head>
         <body>
           <div class="header">
             <h1>AI Document Workbench Export</h1>
-            <p>Generated on \${new Date().toLocaleString()}</p>
+            <p>Generated on ${new Date().toLocaleString()}</p>
           </div>
-          <div>\${formattedMessages || parseMarkdownForPrint(targetText)}</div>
+          <div>${bodyContent}</div>
           <script>
-            window.onload = function() { 
-              window.print(); 
-              window.close(); 
-            };
+            window.onload = function() { window.print(); window.close(); };
           </script>
         </body>
       </html>
-    \`);
+    `);
     printWindow.document.close();
   };
 
+  const exportAsTxt = (targetText = getFullContentText()) => {
+    downloadFile(targetText, "document-export.txt", "text/plain;charset=utf-8");
+  };
+
+  const exportAsMd = (targetText = getFullContentText()) => {
+    downloadFile(targetText, "document-export.md", "text/markdown;charset=utf-8");
+  };
+
+  const exportAsDoc = (targetText = getFullContentText()) => {
+    const htmlContent = `<html><head><meta charset='utf-8'></head><body><div style="font-family:sans-serif;">${parseMarkdownForPrint(targetText)}</div></body></html>`;
+    downloadFile(htmlContent, "document-export.doc", "application/msword");
+  };
 
   const exportAsPng = (targetText = getFullContentText()) => {
     const canvas = document.createElement("canvas");
@@ -286,13 +245,12 @@ export default function AIWorkbench() {
     const image = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = image;
-    a.download = "workbench-export.png";
+    a.download = "document-export.png";
     a.click();
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 max-w-4xl mx-auto flex flex-col font-sans">
-      {/* Dynamic 25 Language UI Switcher */}
       <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <h1 className="text-xl font-bold text-blue-400">{labels.title}</h1>
         <div className="flex items-center gap-2">
@@ -311,7 +269,6 @@ export default function AIWorkbench() {
         </div>
       </div>
 
-      {/* File Upload & Prompt Buttons */}
       <div className="space-y-4 mb-4">
         <div className="flex items-center gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
           <label className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer transition">
@@ -339,7 +296,6 @@ export default function AIWorkbench() {
         </div>
       </div>
 
-      {/* Persistent Continuous Interactive Output Canvas */}
       <div
         ref={outputBoxRef}
         onMouseUp={handleTextSelection}
@@ -359,9 +315,18 @@ export default function AIWorkbench() {
                   : "bg-slate-800/80 border border-slate-700/60 text-slate-100 mr-8"
               }`}
             >
-              <div className="text-[10px] text-slate-400 mb-1 font-semibold flex justify-between">
-                <span>{msg.role === "user" ? "USER" : "AI ASSISTANT"}</span>
-                <span>{msg.timestamp}</span>
+              <div className="text-[10px] text-slate-400 mb-2 font-semibold flex justify-between items-center border-b border-slate-700/40 pb-1">
+                <span>{msg.role === "user" ? "USER" : "AI ASSISTANT"} - {msg.timestamp}</span>
+                {/* Per-response direct export toolbar for AI messages */}
+                {msg.role === "assistant" && (
+                  <div className="flex gap-1.5 bg-slate-900/80 px-2 py-0.5 rounded border border-slate-700">
+                    <span className="text-[9px] text-slate-400 self-center font-normal">Download Response:</span>
+                    <button onClick={() => exportAsPdf(msg.content, false)} className="text-[10px] text-blue-400 hover:underline font-bold">PDF</button>
+                    <button onClick={() => exportAsDoc(msg.content)} className="text-[10px] text-blue-400 hover:underline font-bold">DOC</button>
+                    <button onClick={() => exportAsTxt(msg.content)} className="text-[10px] text-blue-400 hover:underline font-bold">TXT</button>
+                    <button onClick={() => exportAsMd(msg.content)} className="text-[10px] text-blue-400 hover:underline font-bold">MD</button>
+                  </div>
+                )}
               </div>
               <div contentEditable suppressContentEditableWarning className="outline-none whitespace-pre-wrap">
                 {msg.content}
@@ -376,24 +341,21 @@ export default function AIWorkbench() {
         )}
       </div>
 
-      {/* Highlighted Selection Toolbar */}
       {selectedText && (
         <div className="bg-blue-900/90 border border-blue-600 p-2.5 rounded-lg mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="font-semibold text-white">✨ {labels.exportSelected}:</span>
           <div className="flex gap-2">
-            <button onClick={() => exportAsPdf(selectedText)} className="bg-blue-600 hover:bg-blue-500 px-2.5 py-1 rounded">PDF</button>
+            <button onClick={() => exportAsPdf(selectedText, false)} className="bg-blue-600 hover:bg-blue-500 px-2.5 py-1 rounded">PDF</button>
             <button onClick={() => exportAsDoc(selectedText)} className="bg-blue-600 hover:bg-blue-500 px-2.5 py-1 rounded">DOC</button>
             <button onClick={() => exportAsTxt(selectedText)} className="bg-blue-600 hover:bg-blue-500 px-2.5 py-1 rounded">TXT</button>
             <button onClick={() => exportAsMd(selectedText)} className="bg-blue-600 hover:bg-blue-500 px-2.5 py-1 rounded">MD</button>
-            <button onClick={() => exportAsPng(selectedText)} className="bg-blue-600 hover:bg-blue-500 px-2.5 py-1 rounded">PNG</button>
           </div>
         </div>
       )}
 
-      {/* Full Canvas Document Exporters */}
       <div className="flex flex-wrap gap-2 mb-4 justify-between items-center">
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => exportAsPdf()} className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded border border-slate-700">{labels.exportPdf}</button>
+          <button onClick={() => exportAsPdf(undefined, true)} className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded border border-slate-700">{labels.exportPdf}</button>
           <button onClick={() => exportAsPng()} className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded border border-slate-700">{labels.exportPng}</button>
           <button onClick={() => exportAsDoc()} className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded border border-slate-700">{labels.exportDoc}</button>
           <button onClick={() => exportAsTxt()} className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded border border-slate-700">{labels.exportTxt}</button>
@@ -404,7 +366,6 @@ export default function AIWorkbench() {
         </button>
       </div>
 
-      {/* Input Box & Submit Button */}
       <div className="space-y-3">
         <textarea
           value={input}
