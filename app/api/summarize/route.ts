@@ -1,18 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const systemInstruction = `
+function getSystemInstruction(mode?: string, language?: string) {
+  let modeInstruction = "";
+  if (mode === "action_items") {
+    modeInstruction = "FOCUS EXCLUSIVELY ON EXTRACTING TO-DO STEPS, DEADLINES, AND ACTIONABLE ITEMS.";
+  } else if (mode === "executive_brief") {
+    modeInstruction = "PROVIDE A HIGH-LEVEL EXECUTIVE SUMMARY IN EXACTLY 3 CONCISE PARAGRAPHS.";
+  } else if (mode === "key_data") {
+    modeInstruction = "EXTRACT AND ISOLATE ALL NUMBERS, DATES, METRICS, AND FINANCIAL FIGURES INTO A CLEAN LIST.";
+  }
+
+  return `
 You are the AI Document Workbench assistant.
 STRICT FORMATTING REQUIREMENTS:
 1. DO NOT use Markdown symbols anywhere in your response (** , *, #, ##, ###, ---).
 2. Format titles and sections using clean line breaks and UPPERCASE text.
 3. Present lists using simple numbers (1., 2.) or standard dashes (-).
 4. ABSOLUTELY NO LATEX, HTML, OR PIPE TABLES.
-5. Output clean plain text.
+5. Output clean plain text suitable for PDF/TXT generation and text-to-speech reading.
+6. TARGET LANGUAGE: ${language || "en"}.
+${modeInstruction}
 `;
+}
 
-// Provider 1: Groq API (14,400 free req/day)
-async function callGroq(prompt: string) {
+// Provider 1: Groq API
+async function callGroq(prompt: string, instruction: string) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("Missing GROQ_API_KEY");
 
@@ -25,20 +38,20 @@ async function callGroq(prompt: string) {
     body: JSON.stringify({
       model: "llama-3.1-8b-instant",
       messages: [
-        { role: "system", content: systemInstruction },
+        { role: "system", content: instruction },
         { role: "user", content: prompt },
       ],
-      temperature: 0.5,
+      temperature: 0.4,
     }),
   });
 
-  if (!res.ok) throw new Error(`Groq API Error: ${res.status}`);
+  if (!res.ok) throw new Error(`Groq Error: ${res.status}`);
   const data = await res.json();
   return data.choices[0]?.message?.content;
 }
 
 // Provider 2: OpenRouter Free Models
-async function callOpenRouter(prompt: string) {
+async function callOpenRouter(prompt: string, instruction: string) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("Missing OPENROUTER_API_KEY");
 
@@ -51,19 +64,19 @@ async function callOpenRouter(prompt: string) {
     body: JSON.stringify({
       model: "meta-llama/llama-3.1-8b-instruct:free",
       messages: [
-        { role: "system", content: systemInstruction },
+        { role: "system", content: instruction },
         { role: "user", content: prompt },
       ],
     }),
   });
 
-  if (!res.ok) throw new Error(`OpenRouter API Error: ${res.status}`);
+  if (!res.ok) throw new Error(`OpenRouter Error: ${res.status}`);
   const data = await res.json();
   return data.choices[0]?.message?.content;
 }
 
-// Provider 3: Hugging Face Serverless API (Free)
-async function callHuggingFace(prompt: string) {
+// Provider 3: Hugging Face Serverless API
+async function callHuggingFace(prompt: string, instruction: string) {
   const apiKey = process.env.HUGGINGFACE_API_KEY;
   if (!apiKey) throw new Error("Missing HUGGINGFACE_API_KEY");
 
@@ -75,25 +88,25 @@ async function callHuggingFace(prompt: string) {
     },
     body: JSON.stringify({
       messages: [
-        { role: "system", content: systemInstruction },
+        { role: "system", content: instruction },
         { role: "user", content: prompt },
       ],
       max_tokens: 1000,
     }),
   });
 
-  if (!res.ok) throw new Error(`Hugging Face API Error: ${res.status}`);
+  if (!res.ok) throw new Error(`HuggingFace Error: ${res.status}`);
   const data = await res.json();
   return data.choices[0]?.message?.content;
 }
 
 // Provider 4: Google Gemini Backup
-async function callGemini(prompt: string) {
+async function callGemini(prompt: string, instruction: string) {
   const apiKey = process.env.GEMINI_API_KEY || "";
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: "gemini-3.6-flash",
-    systemInstruction,
+    systemInstruction: instruction,
   });
 
   const result = await model.generateContent(prompt);
@@ -102,25 +115,25 @@ async function callGemini(prompt: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { text, promptType } = await req.json();
+    const { text, promptType, language, mode } = await req.json();
     const prompt = text || promptType || "Please summarize the provided text.";
+    const instruction = getSystemInstruction(mode, language);
 
     let reply = "";
 
     const providers = [
-      { name: "Groq", fn: () => callGroq(prompt) },
-      { name: "OpenRouter", fn: () => callOpenRouter(prompt) },
-      { name: "HuggingFace", fn: () => callHuggingFace(prompt) },
-      { name: "Gemini", fn: () => callGemini(prompt) },
+      { name: "Groq", fn: () => callGroq(prompt, instruction) },
+      { name: "OpenRouter", fn: () => callOpenRouter(prompt, instruction) },
+      { name: "HuggingFace", fn: () => callHuggingFace(prompt, instruction) },
+      { name: "Gemini", fn: () => callGemini(prompt, instruction) },
     ];
 
     for (const provider of providers) {
       try {
-        console.log(`Attempting request with: ${provider.name}`);
         reply = await provider.fn();
         if (reply) break;
       } catch (err: any) {
-        console.warn(`${provider.name} failed (${err.message}). Trying next AI...`);
+        console.warn(`${provider.name} failed (${err.message}). Trying next provider...`);
       }
     }
 
@@ -130,7 +143,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Clean residual formatting
+    // Clean residual formatting symbols
     reply = reply.replace(/^#{1,6}\s*/gm, "");
     reply = reply.replace(/\*\*(.*?)\*\*/g, "$1");
     reply = reply.replace(/\*(.*?)\*/g, "$1");
