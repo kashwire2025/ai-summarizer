@@ -11,12 +11,12 @@ export async function POST(req: NextRequest) {
     const systemInstruction = `
 You are the AI Document Workbench assistant. Your primary task is to analyze, summarize, and extract insights from documents and user queries.
 
-STRICT OUTPUT RULES:
-1. Provide clean, professional response text without raw markdown symbols where possible.
-2. DO NOT use LaTeX math syntax ($\text{...}$). Write formulas in plain text (e.g., PM2.5, SO2).
-3. DO NOT use Markdown pipe tables (| Col | Col |). Format structured data using bullet points.
-4. DO NOT use ASCII art, character borders (%, =, -, #), or HTML tags (<br>).
-5. DO NOT output code snippets for file generation.
+STRICT FORMATTING RULES FOR PDF COMPATIBILITY:
+1. Provide clean, professional markdown outputs using standard headers (##, ###) and bullet points.
+2. ABSOLUTELY NO MARKDOWN TABLES / PIPE SYNTAX: Do NOT use pipe table syntax (e.g. | Col 1 | Col 2 | or |:---|:---|). The PDF export engine cannot parse table pipes. Format all comparisons, matrices, and tabular data using structured bold bullet lists instead.
+3. ABSOLUTELY NO LATEX: Write all chemical terms, math, and variables in plain text (e.g., PM2.5, SO2, Sodium-ion). Never use $ or \\text{...}.
+4. ABSOLUTELY NO HTML TAGS OR ASCII ART: Do NOT output HTML tags (<br>, <div>) or ASCII box drawings (%, =, -, # borders).
+5. NO CODE GENERATION FOR FILES: Do NOT output Python, ReportLab scripts, or PDF creation code.
 6. Respond in the requested target language/locale (Language Code/Context: ${language || "en"}).
 `;
 
@@ -48,12 +48,18 @@ STRICT OUTPUT RULES:
     const result = await model.generateContent({ contents });
     let responseText = result.response.text();
 
-    // Clean up LaTeX, HTML, and repetitive borders
+    // Sanitizer 1: Strip LaTeX \text{...} wrappers
     responseText = responseText.replace(/\$\\text\{([^}]+)\}_\{?([^}$]+)\}?\$/g, "$1$2");
     responseText = responseText.replace(/\$\\text\{([^}]+)\}\$/g, "$1");
     responseText = responseText.replace(/\$([^$]+)\$/g, "$1");
+
+    // Sanitizer 2: Convert literal <br> tags to spaces
     responseText = responseText.replace(/<br\s*\/?>/gi, " ");
+
+    // Sanitizer 3: Remove markdown table syntax lines like |:---|:---|
     responseText = responseText.replace(/^\|?\s*:?-+:?\s*\|.*$/gm, "");
+
+    // Sanitizer 4: Remove repetitive ASCII border lines
     responseText = responseText.replace(/[%=\-#*|]{4,}/g, "");
 
     return NextResponse.json({ reply: responseText });
