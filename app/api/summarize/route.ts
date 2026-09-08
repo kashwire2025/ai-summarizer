@@ -11,7 +11,7 @@ STRICT FORMATTING REQUIREMENTS:
 5. Output clean plain text.
 `;
 
-// Provider 1: Groq API (Free Tier: ~14,400 req/day)
+// Provider 1: Groq API (14,400 free req/day)
 async function callGroq(prompt: string) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("Missing GROQ_API_KEY");
@@ -62,7 +62,32 @@ async function callOpenRouter(prompt: string) {
   return data.choices[0]?.message?.content;
 }
 
-// Provider 3: Gemini API Backup
+// Provider 3: Hugging Face Serverless API (Free)
+async function callHuggingFace(prompt: string) {
+  const apiKey = process.env.HUGGINGFACE_API_KEY;
+  if (!apiKey) throw new Error("Missing HUGGINGFACE_API_KEY");
+
+  const res = await fetch("https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      messages: [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 1000,
+    }),
+  });
+
+  if (!res.ok) throw new Error(`Hugging Face API Error: ${res.status}`);
+  const data = await res.json();
+  return data.choices[0]?.message?.content;
+}
+
+// Provider 4: Google Gemini Backup
 async function callGemini(prompt: string) {
   const apiKey = process.env.GEMINI_API_KEY || "";
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -82,10 +107,10 @@ export async function POST(req: NextRequest) {
 
     let reply = "";
 
-    // Array of AI Provider functions to attempt in order
     const providers = [
       { name: "Groq", fn: () => callGroq(prompt) },
       { name: "OpenRouter", fn: () => callOpenRouter(prompt) },
+      { name: "HuggingFace", fn: () => callHuggingFace(prompt) },
       { name: "Gemini", fn: () => callGemini(prompt) },
     ];
 
@@ -93,7 +118,7 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`Attempting request with: ${provider.name}`);
         reply = await provider.fn();
-        if (reply) break; // Exit loop on successful output
+        if (reply) break;
       } catch (err: any) {
         console.warn(`${provider.name} failed (${err.message}). Trying next AI...`);
       }
