@@ -14,3 +14,18 @@ export const shareToTelegram = (text: string) => {
     window.open(shareUrl, "_blank");
   }
 };
+
+// Direct WhatsApp sharing utility
+export const shareToWhatsApp = (text: string) => {
+  if (typeof window !== "undefined") {
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  }
+};
+
+// Copy to clipboard utility
+export const copyToClipboard = async (text: string) => {
+  if (typeof navigator !== "undefined" && navigator.clipboard) {
+    await navigator.clipboard.writeText(text);
+  }
+};
