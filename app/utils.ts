@@ -29,3 +29,30 @@ export const copyToClipboard = async (text: string) => {
     await navigator.clipboard.writeText(text);
   }
 };
+
+// History Utility: Save summary locally
+export const saveSummaryToHistory = (title: string, summaryText: string) => {
+  if (typeof window === "undefined") return;
+  const existingHistory = getSummaryHistory();
+  const newItem = {
+    id: Date.now().toString(),
+    title: title || "Document Summary",
+    text: summaryText,
+    date: new Date().toLocaleString(),
+  };
+  const updatedHistory = [newItem, ...existingHistory];
+  localStorage.setItem("doc_workbench_history", JSON.stringify(updatedHistory));
+};
+
+// History Utility: Get all saved summaries
+export const getSummaryHistory = () => {
+  if (typeof window === "undefined") return [];
+  const stored = localStorage.getItem("doc_workbench_history");
+  return stored ? JSON.parse(stored) : [];
+};
+
+// History Utility: Clear all saved history
+export const clearSummaryHistory = () => {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("doc_workbench_history");
+};
