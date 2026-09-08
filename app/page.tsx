@@ -136,7 +136,7 @@ const LOCALIZATION_DICT: Record<string, LocaleConfig> = {
     exportTxt: "全文 TXT 出力",
     copyBtn: "コピー",
     shareBtn: "共有",
-    noFile: "文件未选择",
+    noFile: "文件未選択",
   },
   ar: {
     name: "العربية (Arabic)",
@@ -500,6 +500,7 @@ interface FileDataPayload {
 
 export default function AIWorkbench() {
   const [lang, setLang] = useState("en");
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [fileData, setFileData] = useState<FileDataPayload | null>(null);
@@ -513,15 +514,16 @@ export default function AIWorkbench() {
 
   const labels = LOCALIZATION_DICT[lang] || LOCALIZATION_DICT["en"];
 
-  // Restore Chat History on mount
+  // Restore Chat History & Theme on mount
   useEffect(() => {
     try {
       const savedHistory = localStorage.getItem("ai_workbench_history");
-      if (savedHistory) {
-        setMessages(JSON.parse(savedHistory));
-      }
+      if (savedHistory) setMessages(JSON.parse(savedHistory));
+
+      const savedTheme = localStorage.getItem("ai_workbench_theme") as "dark" | "light";
+      if (savedTheme) setTheme(savedTheme);
     } catch (e) {
-      console.error("Failed to load saved history", e);
+      console.error("Failed to load saved state", e);
     }
   }, []);
 
@@ -537,6 +539,13 @@ export default function AIWorkbench() {
     }
   }, [messages, loading]);
 
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("ai_workbench_theme", nextTheme);
+    showToast(`Switched to ${nextTheme === "dark" ? "Dark Mode 🌙" : "White/Light Mode ☀️"}`);
+  };
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
@@ -547,7 +556,7 @@ export default function AIWorkbench() {
     showToast("📋 Copied to clipboard!");
   };
 
-  // Speech-to-Text Voice Input with dynamic language sync
+  // Speech-to-Text Voice Input
   const toggleVoiceInput = () => {
     if (typeof window === "undefined") return;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -786,8 +795,12 @@ export default function AIWorkbench() {
     return messages.map((m) => `[${m.role.toUpperCase()} - ${m.timestamp}]\n${m.content}\n`).join("\n---\n\n");
   };
 
+  const isDark = theme === "dark";
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 max-w-4xl mx-auto flex flex-col font-sans relative">
+    <div className={`min-h-screen transition-colors duration-200 p-4 max-w-4xl mx-auto flex flex-col font-sans relative ${
+      isDark ? "bg-slate-950 text-slate-100" : "bg-slate-100 text-slate-900"
+    }`}>
       {/* Toast Alert */}
       {toast && (
         <div className="fixed top-4 right-4 bg-blue-600 text-white text-xs px-4 py-2.5 rounded-xl shadow-2xl z-50 animate-bounce">
@@ -795,62 +808,98 @@ export default function AIWorkbench() {
         </div>
       )}
 
-      {/* Header with 25 Language Selector */}
-      <div className="flex flex-wrap justify-between items-center mb-6 border-b border-slate-800 pb-4 gap-3">
-        <h1 className="text-xl font-bold text-blue-400">{labels.title}</h1>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400 font-medium">🌐 Language:</label>
-          <select
-            value={lang}
-            onChange={(e) => {
-              setLang(e.target.value);
-              showToast(`🌐 Switched to ${LOCALIZATION_DICT[e.target.value].name}`);
-            }}
-            className="bg-slate-900 border border-blue-500/50 text-white text-xs rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none max-w-[180px] truncate"
+      {/* Header with Theme Switcher & 25 Language Selector */}
+      <div className={`flex flex-wrap justify-between items-center mb-6 border-b pb-4 gap-3 ${
+        isDark ? "border-slate-800" : "border-slate-300"
+      }`}>
+        <h1 className={`text-xl font-bold ${isDark ? "text-blue-400" : "text-blue-600"}`}>
+          {labels.title}
+        </h1>
+        
+        <div className="flex items-center gap-3">
+          {/* Theme Mode Toggle Switch */}
+          <button
+            onClick={toggleTheme}
+            title="Toggle Light/Dark Theme"
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition flex items-center gap-1.5 shadow-sm ${
+              isDark
+                ? "bg-slate-900 border-slate-700 text-amber-300 hover:bg-slate-800"
+                : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+            }`}
           >
-            {Object.entries(LOCALIZATION_DICT).map(([code, dict]) => (
-              <option key={code} value={code}>
-                {dict.name}
-              </option>
-            ))}
-          </select>
+            {isDark ? "☀️ White Mode" : "🌙 Dark Mode"}
+          </button>
+
+          {/* Language Selection */}
+          <div className="flex items-center gap-1.5">
+            <select
+              value={lang}
+              onChange={(e) => {
+                setLang(e.target.value);
+                showToast(`🌐 Switched to ${LOCALIZATION_DICT[e.target.value].name}`);
+              }}
+              className={`text-xs rounded-lg p-1.5 outline-none border max-w-[150px] truncate ${
+                isDark
+                  ? "bg-slate-900 border-blue-500/50 text-white focus:ring-2 focus:ring-blue-500"
+                  : "bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-sm"
+              }`}
+            >
+              {Object.entries(LOCALIZATION_DICT).map(([code, dict]) => (
+                <option key={code} value={code}>
+                  {dict.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       <div className="space-y-4 mb-4">
-        <div className="flex items-center gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
+        <div className={`flex items-center gap-3 p-3 rounded-xl border ${
+          isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm"
+        }`}>
           <label className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer transition">
             {labels.chooseFile}
             <input type="file" onChange={handleFileUpload} className="hidden" />
           </label>
-          <span className="text-xs text-slate-400 truncate max-w-xs">
+          <span className={`text-xs truncate max-w-xs ${isDark ? "text-slate-400" : "text-slate-600"}`}>
             {fileName || labels.noFile}
           </span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <button onClick={() => executeAction("Executive Summary", labels.execSummary)} className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs py-2.5 px-3 rounded-lg font-medium transition">
-            📋 {labels.execSummary}
-          </button>
-          <button onClick={() => executeAction("Key Action Items", labels.keyActions)} className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs py-2.5 px-3 rounded-lg font-medium transition">
-            ✅ {labels.keyActions}
-          </button>
-          <button onClick={() => executeAction("Top Takeaways", labels.takeaways)} className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs py-2.5 px-3 rounded-lg font-medium transition">
-            💡 {labels.takeaways}
-          </button>
-          <button onClick={() => executeAction("Analyze Trends", labels.trends)} className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs py-2.5 px-3 rounded-lg font-medium transition">
-            📊 {labels.trends}
-          </button>
+          {[
+            { label: labels.execSummary, icon: "📋", action: "Executive Summary" },
+            { label: labels.keyActions, icon: "✅", action: "Key Action Items" },
+            { label: labels.takeaways, icon: "💡", action: "Top Takeaways" },
+            { label: labels.trends, icon: "📊", action: "Analyze Trends" },
+          ].map((item, idx) => (
+            <button
+              key={idx}
+              onClick={() => executeAction(item.action, item.label)}
+              className={`border text-xs py-2.5 px-3 rounded-lg font-medium transition ${
+                isDark
+                  ? "bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-200"
+                  : "bg-white hover:bg-slate-50 border-slate-200 text-slate-800 shadow-sm"
+              }`}
+            >
+              {item.icon} {item.label}
+            </button>
+          ))}
         </div>
       </div>
 
       <div
         ref={outputBoxRef}
         onMouseUp={handleTextSelection}
-        className="flex-1 bg-slate-900/90 border border-slate-800 rounded-xl p-4 min-h-[340px] max-h-[500px] overflow-y-auto mb-4 space-y-4 shadow-inner"
+        className={`flex-1 border rounded-xl p-4 min-h-[340px] max-h-[500px] overflow-y-auto mb-4 space-y-4 ${
+          isDark
+            ? "bg-slate-900/90 border-slate-800 shadow-inner"
+            : "bg-white border-slate-200 shadow-sm text-slate-900"
+        }`}
       >
         {messages.length === 0 ? (
-          <p className="text-slate-500 text-xs italic text-center mt-32">
+          <p className={`text-xs italic text-center mt-32 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
             Continuous chat history and summaries accumulate here...
           </p>
         ) : (
@@ -859,39 +908,49 @@ export default function AIWorkbench() {
               key={msg.id}
               className={`p-3 rounded-lg text-sm leading-relaxed ${
                 msg.role === "user"
-                  ? "bg-blue-950/60 border border-blue-900/50 text-blue-100 ml-8"
-                  : "bg-slate-800/80 border border-slate-700/60 text-slate-100 mr-8 relative"
+                  ? isDark
+                    ? "bg-blue-950/60 border border-blue-900/50 text-blue-100 ml-8"
+                    : "bg-blue-50 border border-blue-200 text-blue-900 ml-8"
+                  : isDark
+                    ? "bg-slate-800/80 border border-slate-700/60 text-slate-100 mr-8 relative"
+                    : "bg-slate-100 border border-slate-200 text-slate-900 mr-8 relative"
               }`}
             >
-              <div className="text-[10px] text-slate-400 mb-2 font-semibold flex justify-between items-center border-b border-slate-700/40 pb-1">
+              <div className={`text-[10px] mb-2 font-semibold flex justify-between items-center border-b pb-1 ${
+                isDark ? "text-slate-400 border-slate-700/40" : "text-slate-500 border-slate-200"
+              }`}>
                 <span>{msg.role === "user" ? "USER" : "AI ASSISTANT"} - {msg.timestamp}</span>
                 {msg.role === "assistant" && (
                   <div className="flex gap-2 items-center">
-                    <button onClick={() => copyToClipboard(msg.content)} className="text-[10px] text-slate-300 hover:text-white font-medium">📋 {labels.copyBtn}</button>
-                    <button onClick={() => setShareMenuMsgId(shareMenuMsgId === msg.id ? null : msg.id)} className="text-[10px] text-blue-400 hover:underline font-bold">📲 {labels.shareBtn}</button>
-                    <button onClick={() => downloadDirectPdf(msg.content, `doc_${msg.id}.pdf`)} className="text-[10px] text-blue-400 hover:underline font-bold">PDF</button>
-                    <button onClick={() => downloadFile(msg.content, `doc_${msg.id}.txt`, "text/plain")} className="text-[10px] text-blue-400 hover:underline font-bold">TXT</button>
+                    <button onClick={() => copyToClipboard(msg.content)} className="text-[10px] font-medium hover:underline">📋 {labels.copyBtn}</button>
+                    <button onClick={() => setShareMenuMsgId(shareMenuMsgId === msg.id ? null : msg.id)} className="text-[10px] text-blue-500 hover:underline font-bold">📲 {labels.shareBtn}</button>
+                    <button onClick={() => downloadDirectPdf(msg.content, `doc_${msg.id}.pdf`)} className="text-[10px] text-blue-500 hover:underline font-bold">PDF</button>
+                    <button onClick={() => downloadFile(msg.content, `doc_${msg.id}.txt`, "text/plain")} className="text-[10px] text-blue-500 hover:underline font-bold">TXT</button>
                   </div>
                 )}
               </div>
 
               {/* Social Share Menu */}
               {shareMenuMsgId === msg.id && (
-                <div className="bg-slate-900 border border-blue-500/50 p-2.5 rounded-lg mb-2 flex gap-3 text-xs justify-around items-center">
-                  <span className="text-[10px] text-slate-400 font-semibold">{labels.shareBtn}:</span>
-                  <button onClick={() => shareToPlatform("whatsapp", msg.content)} className="text-emerald-400 hover:underline font-bold">WhatsApp</button>
-                  <button onClick={() => shareToPlatform("telegram", msg.content)} className="text-sky-400 hover:underline font-bold">Telegram</button>
-                  <button onClick={() => shareToPlatform("twitter", msg.content)} className="text-slate-200 hover:underline font-bold">X/Twitter</button>
-                  <button onClick={() => shareToPlatform("native", msg.content)} className="text-blue-400 hover:underline font-bold">More</button>
+                <div className={`border p-2.5 rounded-lg mb-2 flex gap-3 text-xs justify-around items-center ${
+                  isDark ? "bg-slate-900 border-blue-500/50" : "bg-white border-blue-300 shadow-md"
+                }`}>
+                  <span className="text-[10px] font-semibold">{labels.shareBtn}:</span>
+                  <button onClick={() => shareToPlatform("whatsapp", msg.content)} className="text-emerald-500 hover:underline font-bold">WhatsApp</button>
+                  <button onClick={() => shareToPlatform("telegram", msg.content)} className="text-sky-500 hover:underline font-bold">Telegram</button>
+                  <button onClick={() => shareToPlatform("twitter", msg.content)} className="hover:underline font-bold">X/Twitter</button>
+                  <button onClick={() => shareToPlatform("native", msg.content)} className="text-blue-500 hover:underline font-bold">More</button>
                 </div>
               )}
 
               {/* PDF Attachment Box */}
               {msg.pdfUrl && (
-                <div className="mb-3 p-2.5 bg-slate-900/90 border border-blue-500/40 rounded-lg flex items-center justify-between">
+                <div className={`mb-3 p-2.5 border rounded-lg flex items-center justify-between ${
+                  isDark ? "bg-slate-900/90 border-blue-500/40" : "bg-blue-50/50 border-blue-200"
+                }`}>
                   <div className="flex items-center gap-2">
                     <span className="bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded">PDF</span>
-                    <span className="text-xs font-medium text-slate-200">{msg.pdfFileName}</span>
+                    <span className="text-xs font-medium">{msg.pdfFileName}</span>
                   </div>
                   <a href={msg.pdfUrl} download={msg.pdfFileName} className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1 rounded transition font-semibold">
                     Download PDF
@@ -904,29 +963,35 @@ export default function AIWorkbench() {
           ))
         )}
         {loading && (
-          <div className="text-xs text-blue-400 animate-pulse py-2">
+          <div className="text-xs text-blue-500 animate-pulse py-2 font-medium">
             AI processing in {labels.name}...
           </div>
         )}
       </div>
 
       {selectedText && (
-        <div className="bg-blue-900/90 border border-blue-600 p-2.5 rounded-lg mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span className="font-semibold text-white">✨ Selected Text Actions:</span>
+        <div className={`border p-2.5 rounded-lg mb-3 flex flex-wrap items-center justify-between gap-2 text-xs ${
+          isDark ? "bg-blue-900/90 border-blue-600" : "bg-blue-50 border-blue-300 text-blue-950"
+        }`}>
+          <span className="font-semibold">✨ Selected Text Actions:</span>
           <div className="flex gap-2">
-            <button onClick={() => copyToClipboard(selectedText)} className="bg-blue-600 hover:bg-blue-500 px-2.5 py-1 rounded">{labels.copyBtn}</button>
-            <button onClick={() => downloadDirectPdf(selectedText, "selected.pdf")} className="bg-blue-600 hover:bg-blue-500 px-2.5 py-1 rounded">PDF</button>
-            <button onClick={() => downloadFile(selectedText, "selected.txt", "text/plain")} className="bg-blue-600 hover:bg-blue-500 px-2.5 py-1 rounded">TXT</button>
+            <button onClick={() => copyToClipboard(selectedText)} className="bg-blue-600 text-white hover:bg-blue-500 px-2.5 py-1 rounded">{labels.copyBtn}</button>
+            <button onClick={() => downloadDirectPdf(selectedText, "selected.pdf")} className="bg-blue-600 text-white hover:bg-blue-500 px-2.5 py-1 rounded">PDF</button>
+            <button onClick={() => downloadFile(selectedText, "selected.txt", "text/plain")} className="bg-blue-600 text-white hover:bg-blue-500 px-2.5 py-1 rounded">TXT</button>
           </div>
         </div>
       )}
 
       <div className="flex flex-wrap gap-2 mb-4 justify-between items-center">
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => downloadDirectPdf(getFullContentText(), "full_chat.pdf")} className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded border border-slate-700">{labels.exportPdf}</button>
-          <button onClick={() => downloadFile(getFullContentText(), "full_chat.txt", "text/plain")} className="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded border border-slate-700">{labels.exportTxt}</button>
+          <button onClick={() => downloadDirectPdf(getFullContentText(), "full_chat.pdf")} className={`text-xs px-3 py-1.5 rounded border ${
+            isDark ? "bg-slate-800 hover:bg-slate-700 border-slate-700" : "bg-white hover:bg-slate-50 border-slate-300 shadow-sm"
+          }`}>{labels.exportPdf}</button>
+          <button onClick={() => downloadFile(getFullContentText(), "full_chat.txt", "text/plain")} className={`text-xs px-3 py-1.5 rounded border ${
+            isDark ? "bg-slate-800 hover:bg-slate-700 border-slate-700" : "bg-white hover:bg-slate-50 border-slate-300 shadow-sm"
+          }`}>{labels.exportTxt}</button>
         </div>
-        <button onClick={clearHistory} className="text-xs text-red-400 hover:underline">
+        <button onClick={clearHistory} className="text-xs text-red-500 hover:underline font-medium">
           {labels.clearBtn}
         </button>
       </div>
@@ -938,13 +1003,21 @@ export default function AIWorkbench() {
             onChange={(e) => setInput(e.target.value)}
             placeholder={labels.placeholder}
             rows={3}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-100 pr-12"
+            className={`w-full border rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none pr-12 ${
+              isDark
+                ? "bg-slate-900 border-slate-800 text-slate-100"
+                : "bg-white border-slate-300 text-slate-900 shadow-sm"
+            }`}
           />
           <button
             onClick={toggleVoiceInput}
             title={`Speech to Text (${labels.name})`}
             className={`absolute right-3 top-3 p-2 rounded-lg text-xs font-bold transition ${
-              isListening ? "bg-red-600 text-white animate-ping" : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+              isListening
+                ? "bg-red-600 text-white animate-ping"
+                : isDark
+                  ? "bg-slate-800 hover:bg-slate-700 text-slate-300"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
             }`}
           >
             🎙️
