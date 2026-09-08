@@ -9,15 +9,15 @@ export async function POST(req: NextRequest) {
     const { text, history, fileData, promptType, language } = await req.json();
 
     const systemInstruction = `
-You are the AI Document Workbench assistant. Your primary task is to analyze, summarize, and extract insights from documents and user queries.
+You are the AI Document Workbench assistant.
 
-STRICT FORMATTING RULES FOR PDF COMPATIBILITY:
-1. Provide clean, professional markdown outputs using standard headers (##, ###) and bullet points.
-2. ABSOLUTELY NO MARKDOWN TABLES / PIPE SYNTAX: Do NOT use pipe table syntax (e.g. | Col 1 | Col 2 | or |:---|:---|). The PDF export engine cannot parse table pipes. Format all comparisons, matrices, and tabular data using structured bold bullet lists instead.
-3. ABSOLUTELY NO LATEX: Write all chemical terms, math, and variables in plain text (e.g., PM2.5, SO2, Sodium-ion). Never use $ or \\text{...}.
-4. ABSOLUTELY NO HTML TAGS OR ASCII ART: Do NOT output HTML tags (<br>, <div>) or ASCII box drawings (%, =, -, # borders).
-5. NO CODE GENERATION FOR FILES: Do NOT output Python, ReportLab scripts, or PDF creation code.
-6. Respond in the requested target language/locale (Language Code/Context: ${language || "en"}).
+STRICT FORMATTING REQUIREMENTS:
+1. DO NOT use Markdown symbols anywhere in your response. No asterisks (** or *), no header hashes (#, ##, ###), no underscores, and no horizontal rules (---).
+2. Format titles and sections using clean line breaks and UPPERCASE text.
+3. Present lists using simple numbers (1., 2., 3.) or bullet points with standard dashes (-).
+4. ABSOLUTELY NO LATEX ($\text{...}$), HTML (<br>), OR PIPE TABLES (|).
+5. Output clean, readable plain text suitable for standard display boxes.
+6. Language: ${language || "en"}.
 `;
 
     const model = genAI.getGenerativeModel({
@@ -48,19 +48,13 @@ STRICT FORMATTING RULES FOR PDF COMPATIBILITY:
     const result = await model.generateContent({ contents });
     let responseText = result.response.text();
 
-    // Sanitizer 1: Strip LaTeX \text{...} wrappers
-    responseText = responseText.replace(/\$\\text\{([^}]+)\}_\{?([^}$]+)\}?\$/g, "$1$2");
+    // Regex Sanitizer: Strip residual markdown symbols
+    responseText = responseText.replace(/^#{1,6}\s*/gm, "");
+    responseText = responseText.replace(/\*\*(.*?)\*\*/g, "$1");
+    responseText = responseText.replace(/\*(.*?)\*/g, "$1");
+    responseText = responseText.replace(/^---$/gm, "");
     responseText = responseText.replace(/\$\\text\{([^}]+)\}\$/g, "$1");
-    responseText = responseText.replace(/\$([^$]+)\$/g, "$1");
-
-    // Sanitizer 2: Convert literal <br> tags to spaces
     responseText = responseText.replace(/<br\s*\/?>/gi, " ");
-
-    // Sanitizer 3: Remove markdown table syntax lines like |:---|:---|
-    responseText = responseText.replace(/^\|?\s*:?-+:?\s*\|.*$/gm, "");
-
-    // Sanitizer 4: Remove repetitive ASCII border lines
-    responseText = responseText.replace(/[%=\-#*|]{4,}/g, "");
 
     return NextResponse.json({ reply: responseText });
   } catch (error: any) {
