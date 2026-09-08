@@ -15,11 +15,18 @@ interface Message {
   timestamp: string;
 }
 
+interface FileDataPayload {
+  inlineData: {
+    mimeType: string;
+    data: string;
+  };
+}
+
 export default function AIWorkbench() {
   const [lang, setLang] = useState("en");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [fileData, setFileData] = useState<any>(null);
+  const [fileData, setFileData] = useState<FileDataPayload | null>(null);
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedText, setSelectedText] = useState("");
@@ -108,13 +115,14 @@ export default function AIWorkbench() {
           },
         ]);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Network error";
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: `⚠️ Network Error: ${err.message}`,
+          content: `⚠️ Network Error: ${errorMsg}`,
           timestamp: new Date().toLocaleTimeString(),
         },
       ]);
@@ -137,7 +145,6 @@ export default function AIWorkbench() {
     return messages.map((m) => `[${m.role.toUpperCase()} - ${m.timestamp}]\n${m.content}\n`).join("\n---\n\n");
   };
 
-  // Parses Markdown into HTML for clean printing
   const parseMarkdownForPrint = (str: string) => {
     return str
       .replace(/^### (.*$)/gim, '<h3 style="font-size: 15px; font-weight: bold; margin: 12px 0 6px 0; color: #1e293b;">$1</h3>')
@@ -149,8 +156,8 @@ export default function AIWorkbench() {
       .replace(/\n/g, '<br/>');
   };
 
-  // Fixed PDF exporter: exports ONLY the specified text when provided
   const exportAsPdf = (targetText?: string, isFullChat: boolean = false) => {
+    if (typeof window === "undefined") return;
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -222,6 +229,7 @@ export default function AIWorkbench() {
   };
 
   const exportAsPng = (targetText = getFullContentText()) => {
+    if (typeof document === "undefined") return;
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -317,7 +325,6 @@ export default function AIWorkbench() {
             >
               <div className="text-[10px] text-slate-400 mb-2 font-semibold flex justify-between items-center border-b border-slate-700/40 pb-1">
                 <span>{msg.role === "user" ? "USER" : "AI ASSISTANT"} - {msg.timestamp}</span>
-                {/* Per-response direct export toolbar for AI messages */}
                 {msg.role === "assistant" && (
                   <div className="flex gap-1.5 bg-slate-900/80 px-2 py-0.5 rounded border border-slate-700">
                     <span className="text-[9px] text-slate-400 self-center font-normal">Download Response:</span>
@@ -328,7 +335,7 @@ export default function AIWorkbench() {
                   </div>
                 )}
               </div>
-              <div contentEditable suppressContentEditableWarning className="outline-none whitespace-pre-wrap">
+              <div contentEditable={true} suppressContentEditableWarning={true} className="outline-none whitespace-pre-wrap">
                 {msg.content}
               </div>
             </div>
