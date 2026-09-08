@@ -1,102 +1,57 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.GEMINI_API_KEY || "";
+const genAI = new GoogleGenerativeAI(apiKey);
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "GEMINI_API_KEY is missing in Vercel Environment Variables." },
-        { status: 500 }
-      );
-    }
-
     const { text, history, fileData, promptType, language } = await req.json();
 
-    // Target gemini-3.6-flash as default
-    let selectedModel = "gemini-3.6-flash";
+    const systemInstruction = `
+You are the AI Document Workbench assistant. Your primary task is to analyze, summarize, and extract insights from documents and user queries.
 
-    // 1. Query Google REST API directly to verify model availability on this key
-    try {
-      const listRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
-      );
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        const validModels = (listData.models || [])
-          .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
-          .map((m: any) => m.name.replace(/^models\//, ""));
+STRICT GUIDELINES:
+1. Provide clean, professional, and well-structured markdown outputs.
+2. CRITICAL: NEVER output Python code, ReportLab scripts, code snippets for file generation, or browser printing instructions (e.g., "Ctrl + P" or "Save as PDF"), even if the user explicitly asks to "generate a PDF file". The frontend workbench handles client-side PDF synthesis automatically.
+3. Keep the content focused entirely on the requested analysis, summary, executive summary, key actions, or topic discussion.
+4. Respond in the requested target language/locale (Language Code/Context: ${language || "en"}).
+`;
 
-        if (validModels.length > 0) {
-          // Priority selection order: gemini-3.6-flash -> any 3.6 model -> flash -> pro -> fallback
-          selectedModel =
-            validModels.find((m: string) => m === "gemini-3.6-flash") ||
-            validModels.find((m: string) => m.includes("3.6")) ||
-            validModels.find((m: string) => m.includes("flash")) ||
-            validModels.find((m: string) => m.includes("pro")) ||
-            validModels[0];
-        }
-      }
-    } catch (err) {
-      console.warn("Model discovery fallback used, using gemini-3.6-flash default");
-    }
-
-    // 2. Build system instructions and continuous chat context
-    const systemInstruction = `You are an interactive conversational AI document analyzer and web workbench.
-You maintain continuous dialogue, answer follow-up queries, and analyze documents.
-CRITICAL MANDATE: Respond ENTIRELY in this language: "${language || 'English'}".
-Task Context: ${promptType || 'General Conversation'}`;
-
-    let promptText = `${systemInstruction}\n\n`;
-
-    if (Array.isArray(history) && history.length > 0) {
-      promptText += `--- Conversation History ---\n`;
-      history.slice(-8).forEach((msg: { role: string; content: string }) => {
-        promptText += `${msg.role === "user" ? "User" : "AI"}: ${msg.content}\n`;
-      });
-      promptText += `--- End History ---\n\n`;
-    }
-
-    promptText += `New User Command / Input:\n${text || "Process request"}`;
-
-    const parts: any[] = [{ text: promptText }];
-
-    if (fileData && fileData.inlineData) {
-      parts.push({
-        inline_data: {
-          mime_type: fileData.inlineData.mimeType,
-          data: fileData.inlineData.data,
-        },
-      });
-    }
-
-    // 3. Make direct REST API call to gemini-3.6-flash / selected model endpoint
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
-
-    const aiRes = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts }] }),
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      systemInstruction,
     });
 
-    const aiData = await aiRes.json();
+    // Format chat history into Gemini contents format
+    const formattedHistory = (history || []).map((msg: any) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    }));
 
-    if (!aiRes.ok) {
-      return NextResponse.json(
-        { error: aiData?.error?.message || `API call failed for model ${selectedModel}` },
-        { status: aiRes.status }
-      );
+    const contents: any[] = [...formattedHistory];
+
+    const currentMessageParts: any[] = [];
+    if (fileData) {
+      currentMessageParts.push(fileData);
     }
+    
+    const userPrompt = text || promptType || "Please summarize the provided context.";
+    currentMessageParts.push({ text: userPrompt });
 
-    const replyText = aiData?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!replyText) {
-      return NextResponse.json({ error: "No response text returned from Gemini." }, { status: 500 });
-    }
+    contents.push({
+      role: "user",
+      parts: currentMessageParts,
+    });
 
-    return NextResponse.json({ reply: replyText, modelUsed: selectedModel });
+    const result = await model.generateContent({ contents });
+    const responseText = result.response.text();
+
+    return NextResponse.json({ reply: responseText });
   } catch (error: any) {
+    console.error("Summarize API Error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to process request" },
+      { error: error?.message || "Failed to generate summary." },
       { status: 500 }
     );
   }
