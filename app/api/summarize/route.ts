@@ -20,8 +20,9 @@ STRICT FORMATTING REQUIREMENTS:
 6. Language: ${language || "en"}.
 `;
 
+    // Use standard stable flash model
     const model = genAI.getGenerativeModel({
-      model: "gemini-3.6-flash",
+      model: "gemini-2.5-flash",
       systemInstruction,
     });
 
@@ -45,7 +46,27 @@ STRICT FORMATTING REQUIREMENTS:
       parts: currentMessageParts,
     });
 
-    const result = await model.generateContent({ contents });
+    // Automatic retry logic with exponential backoff for 429 Rate Limits
+    let result;
+    let retries = 3;
+    let delay = 3000;
+
+    while (retries > 0) {
+      try {
+        result = await model.generateContent({ contents });
+        break;
+      } catch (err: any) {
+        if (err?.status === 429 || err?.message?.includes("429") || err?.message?.includes("Quota exceeded")) {
+          retries--;
+          if (retries === 0) throw err;
+          await new Promise((res) => setTimeout(res, delay));
+          delay *= 2;
+        } else {
+          throw err;
+        }
+      }
+    }
+
     let responseText = result.response.text();
 
     // Regex Sanitizer: Strip residual markdown symbols
@@ -59,6 +80,14 @@ STRICT FORMATTING REQUIREMENTS:
     return NextResponse.json({ reply: responseText });
   } catch (error: any) {
     console.error("Summarize API Error:", error);
+
+    // Return a clean text reply on rate limits instead of raw Google JSON dumps
+    if (error?.status === 429 || error?.message?.includes("429") || error?.message?.includes("Quota exceeded")) {
+      return NextResponse.json({
+        reply: "API Rate limit reached. Please wait 10 to 15 seconds before trying again."
+      });
+    }
+
     return NextResponse.json(
       { error: error?.message || "Failed to generate summary." },
       { status: 500 }
