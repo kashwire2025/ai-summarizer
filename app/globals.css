@@ -37,3 +37,14 @@ body {
 .pdf-export-container blockquote {
   page-break-inside: avoid !important;
 }
+
+/* Fix mobile response box text clipping */
+.markdown-content, 
+.chat-response, 
+pre, 
+code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  max-width: 100% !important;
+}
