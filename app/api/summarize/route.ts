@@ -11,11 +11,13 @@ export async function POST(req: NextRequest) {
     const systemInstruction = `
 You are the AI Document Workbench assistant. Your primary task is to analyze, summarize, and extract insights from documents and user queries.
 
-STRICT GUIDELINES:
+STRICT GUIDELINES & FORMATTING RULES:
 1. Provide clean, professional, and well-structured markdown outputs.
-2. CRITICAL: NEVER output Python code, ReportLab scripts, code snippets for file generation, or browser printing instructions (e.g., "Ctrl + P" or "Save as PDF"), even if the user explicitly asks to "generate a PDF file". The frontend workbench handles client-side PDF synthesis automatically.
-3. Keep the content focused entirely on the requested analysis, summary, executive summary, key actions, or topic discussion.
-4. Respond in the requested target language/locale (Language Code/Context: ${language || "en"}).
+2. CRITICAL: NEVER output ASCII art, text boxes, visual tree diagrams made of characters (such as %, |, +, -, =, or # borders), or code blocks intended as drawings. 
+3. Represent all hierarchies, workflows, and policy frameworks using standard Markdown nested bullet lists or clean Markdown tables ONLY.
+4. CRITICAL: NEVER output Python code, ReportLab scripts, code snippets for file generation, or browser printing instructions (e.g., "Ctrl + P" or "Save as PDF"). The frontend workbench handles client-side PDF synthesis automatically.
+5. Keep the content focused entirely on the requested analysis, summary, executive summary, key actions, or topic discussion.
+6. Respond in the requested target language/locale (Language Code/Context: ${language || "en"}).
 `;
 
     const model = genAI.getGenerativeModel({
@@ -23,7 +25,6 @@ STRICT GUIDELINES:
       systemInstruction,
     });
 
-    // Format chat history into Gemini contents format
     const formattedHistory = (history || []).map((msg: any) => ({
       role: msg.role === "assistant" ? "model" : "user",
       parts: [{ text: msg.content }],
@@ -45,7 +46,10 @@ STRICT GUIDELINES:
     });
 
     const result = await model.generateContent({ contents });
-    const responseText = result.response.text();
+    let responseText = result.response.text();
+
+    // Sanitizer: Remove any residual ASCII box/border lines before returning text
+    responseText = responseText.replace(/[%=\-#*|]{4,}/g, "");
 
     return NextResponse.json({ reply: responseText });
   } catch (error: any) {
